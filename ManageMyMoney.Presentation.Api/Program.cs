@@ -8,8 +8,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Railway usa PORT como variable de entorno
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://*:{port}");
 
 // Controllers
 builder.Services.AddControllers()
@@ -29,12 +34,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = swaggerSettings["Title"] ?? "ManageMyMoney API",
         Version = swaggerSettings["Version"] ?? "v1",
-        Description = swaggerSettings["Description"] ?? "API para gestión de gastos personales",
-        Contact = new OpenApiContact
-        {
-            Name = swaggerSettings["ContactName"] ?? "Support",
-            Email = swaggerSettings["ContactEmail"] ?? "support@managemymoney.com"
-        }
+        Description = swaggerSettings["Description"] ?? "API para gestión de gastos personales"
     });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -44,7 +44,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Ingresa el token JWT en el formato: Bearer {token}"
+        Description = "Ingresa el token JWT"
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -63,86 +63,87 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// JWT Authentication
+// JWT Authentication - Usar variables de entorno en Railway
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured"));
-
+retKey);
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;  options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+})engeScheme = JwtBearerDefaults.AuthenticationScheme;
+.AddJwtBearer(options =>)
 {
     options.TokenValidationParameters = new TokenValidationParameters
-    {
+    {ameters = new TokenValidationParameters
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(secretKey),
-        ClockSkew = TimeSpan.Zero
-    };
-});
+        ValidAudience = jwtSettings["Audience"],SSUER") ?? builder.Configuration["JwtSettings:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(secretKey),nt.GetEnvironmentVariable("JWT_AUDIENCE") ?? builder.Configuration["JwtSettings:Audience"],
+        ClockSkew = TimeSpan.Zero  IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+    };     ClockSkew = TimeSpan.Zero
+});    };
 
 builder.Services.AddAuthorization();
-
+.Services.AddAuthorization();
 // CORS
 var corsSettings = builder.Configuration.GetSection("CorsSettings");
-var allowedOrigins = corsSettings.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+var allowedOrigins = corsSettings.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();builder.Services.AddCors(options =>
 
-builder.Services.AddCors(options =>
+builder.Services.AddCors(options =>   options.AddPolicy("AllowAll", policy =>
 {
-    options.AddPolicy("DefaultPolicy", policy =>
+    options.AddPolicy("DefaultPolicy", policy =>   policy.AllowAnyOrigin()
     {
-        if (allowedOrigins.Length > 0)
+        if (allowedOrigins.Length > 0)     .AllowAnyHeader();
         {
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyMethod()
                   .AllowAnyHeader()
-                  .AllowCredentials();
+                  .AllowCredentials();ervices.AddHealthChecks();
         }
-        else
+        elseervices.AddHttpContextAccessor();
         {
             policy.AllowAnyOrigin()
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
-        }
+                  .AllowAnyMethod()ces();
+                  .AllowAnyHeader();ervices.AddPersistenceServices(builder.Configuration);
+        }.Services.AddSharedInfrastructure(builder.Configuration);
     });
-});
+});var app = builder.Build();
 
 // Rate Limiting
 var rateLimitSettings = builder.Configuration.GetSection("RateLimitSettings");
 if (rateLimitSettings.GetValue<bool>("EnableRateLimiting"))
-{
-    builder.Services.AddRateLimiter(options =>
+{uiredService<ManageMyMoney.Infrastructure.Persistence.Context.ManageMyMoneyContext>();
+    builder.Services.AddRateLimiter(options =>ry
     {
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: context.User.Identity?.Name ?? context.Request.Headers.Host.ToString(),
                 factory: _ => new FixedWindowRateLimiterOptions
-                {
+                {;
                     PermitLimit = rateLimitSettings.GetValue<int>("PermitLimit"),
                     Window = TimeSpan.FromSeconds(rateLimitSettings.GetValue<int>("WindowSeconds")),
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = rateLimitSettings.GetValue<int>("QueueLimit")
-                }));
+                }));// Swagger siempre habilitado
 
-        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;SwaggerUI(options =>
     });
-}
-
+}    options.SwaggerEndpoint("/swagger/v1/swagger.json", "ManageMyMoney API v1");
+s.RoutePrefix = string.Empty;
 // Caching
 var cacheSettings = builder.Configuration.GetSection("CacheSettings");
-if (cacheSettings.GetValue<bool>("EnableCaching"))
+if (cacheSettings.GetValue<bool>("EnableCaching"))/ Health check endpoint
 {
     builder.Services.AddDistributedMemoryCache();
-}
-
+}// Middleware
+are>();
 builder.Services.AddHttpContextAccessor();
-
+;
 // Application Services
 builder.Services.AddApplicationServices();
 builder.Services.AddPersistenceServices(builder.Configuration);
@@ -150,30 +151,4 @@ builder.Services.AddSharedInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Swagger (Development only or always if needed)
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "ManageMyMoney API v1");
-        options.RoutePrefix = string.Empty;
-    });
-}
-
-// Middleware
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-app.UseCors("DefaultPolicy");
-
-if (rateLimitSettings.GetValue<bool>("EnableRateLimiting"))
-{
-    app.UseRateLimiter();
-}
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
+// Swagger (Development only or always if needed)if (app.Environment.IsDevelopment()){    app.UseSwagger();    app.UseSwaggerUI(options =>    {        options.SwaggerEndpoint("/swagger/v1/swagger.json", "ManageMyMoney API v1");        options.RoutePrefix = string.Empty;    });}// Middlewareapp.UseMiddleware<ExceptionHandlingMiddleware>();app.UseCors("DefaultPolicy");if (rateLimitSettings.GetValue<bool>("EnableRateLimiting")){    app.UseRateLimiter();}app.UseAuthentication();app.UseAuthorization();app.MapControllers();app.Run();
