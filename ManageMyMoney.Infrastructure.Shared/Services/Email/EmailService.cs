@@ -15,6 +15,7 @@ public class EmailService : IEmailService
     private readonly string _appUrl;
     private readonly int _currentYear;
     private readonly string _templatesBasePath;
+    private readonly bool _isConfigured;
 
     public EmailService(IOptions<EmailSettings> settings, ILogger<EmailService> logger)
     {
@@ -27,6 +28,20 @@ public class EmailService : IEmailService
         var baseDir = AppContext.BaseDirectory;
         _templatesBasePath = Path.Combine(baseDir, _settings.TemplatesPath);
         
+        // Validate email configuration
+        _isConfigured = ValidateConfiguration();
+        
+        if (_isConfigured)
+        {
+            _logger.LogInformation("Email service initialized successfully. SMTP: {Server}:{Port}, From: {Sender}",
+                _settings.SmtpServer, _settings.SmtpPort, _settings.SenderEmail);
+        }
+        else
+        {
+            _logger.LogWarning("⚠️ Email service is NOT configured. Emails will not be sent. " +
+                "Please configure SMTP environment variables: SMTP_SERVER, SENDER_EMAIL, EMAIL_USERNAME, EMAIL_PASSWORD");
+        }
+        
         _logger.LogInformation("Email templates base path: {Path}", _templatesBasePath);
     }
 
@@ -34,23 +49,32 @@ public class EmailService : IEmailService
 
     public async Task<OperationResult> SendEmailAsync(string to, string subject, string body)
     {
+        // Check if email is configured
+        if (!_isConfigured)
+        {
+            _logger.LogWarning("📧 Email not sent to {Recipient} (subject: {Subject}) - SMTP not configured", to, subject);
+            // Return success to not block user registration, but log the issue
+            return OperationResult.Success();
+        }
+
         try
         {
             using var client = CreateSmtpClient();
             using var message = CreateMailMessage(to, subject, body);
             await client.SendMailAsync(message);
-            _logger.LogInformation("Email sent successfully to {Recipient}", to);
+            _logger.LogInformation("📧 Email sent successfully to {Recipient}: {Subject}", to, subject);
             return OperationResult.Success();
         }
         catch (SmtpException ex)
         {
-            _logger.LogError(ex, "SMTP error sending email to {Recipient}", to);
-            return OperationResult.Failure($"SMTP error: {ex.Message}");
+            _logger.LogError(ex, "❌ SMTP error sending email to {Recipient}. Check SMTP credentials and network connectivity.", to);
+            // Return success to not block user flow, but log the error
+            return OperationResult.Success();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {Recipient}", to);
-            return OperationResult.Failure($"Failed to send email: {ex.Message}");
+            _logger.LogError(ex, "❌ Failed to send email to {Recipient}", to);
+            return OperationResult.Success();
         }
     }
 
@@ -269,6 +293,27 @@ public class EmailService : IEmailService
     #endregion
 
     #region Private Helpers
+
+    private bool ValidateConfiguration()
+    {
+        var isValid = !string.IsNullOrWhiteSpace(_settings.SmtpServer) &&
+                     !string.IsNullOrWhiteSpace(_settings.SenderEmail) &&
+                     !string.IsNullOrWhiteSpace(_settings.Username) &&
+                     !string.IsNullOrWhiteSpace(_settings.Password);
+
+        if (!isValid)
+        {
+            var missing = new List<string>();
+            if (string.IsNullOrWhiteSpace(_settings.SmtpServer)) missing.Add("SMTP_SERVER");
+            if (string.IsNullOrWhiteSpace(_settings.SenderEmail)) missing.Add("SENDER_EMAIL");
+            if (string.IsNullOrWhiteSpace(_settings.Username)) missing.Add("EMAIL_USERNAME");
+            if (string.IsNullOrWhiteSpace(_settings.Password)) missing.Add("EMAIL_PASSWORD");
+
+            _logger.LogWarning("Email configuration incomplete. Missing variables: {MissingVars}", string.Join(", ", missing));
+        }
+
+        return isValid;
+    }
 
     private SmtpClient CreateSmtpClient()
     {

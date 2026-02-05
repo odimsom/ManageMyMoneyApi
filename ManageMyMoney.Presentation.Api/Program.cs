@@ -137,6 +137,35 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("Seeding currencies...");
         await CurrencySeed.SeedAsync(context);
         logger.LogInformation("Currency seeding completed");
+        
+        // Validate email configuration
+        logger.LogInformation("=== Email Configuration Status ===");
+        var smtpServer = Environment.GetEnvironmentVariable("SMTP_SERVER");
+        var senderEmail = Environment.GetEnvironmentVariable("SENDER_EMAIL");
+        var emailUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME");
+        var emailPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
+        
+        if (!string.IsNullOrWhiteSpace(smtpServer) &&
+            !string.IsNullOrWhiteSpace(senderEmail) &&
+            !string.IsNullOrWhiteSpace(emailUsername) &&
+            !string.IsNullOrWhiteSpace(emailPassword))
+        {
+            logger.LogInformation("✅ Email service: CONFIGURED - SMTP: {Server}, From: {Sender}", smtpServer, senderEmail);
+        }
+        else
+        {
+            logger.LogWarning("⚠️  Email service: NOT CONFIGURED - Emails will not be sent");
+            logger.LogWarning("   Missing variables: {Missing}",
+                string.Join(", ", new[]
+                {
+                    string.IsNullOrWhiteSpace(smtpServer) ? "SMTP_SERVER" : null,
+                    string.IsNullOrWhiteSpace(senderEmail) ? "SENDER_EMAIL" : null,
+                    string.IsNullOrWhiteSpace(emailUsername) ? "EMAIL_USERNAME" : null,
+                    string.IsNullOrWhiteSpace(emailPassword) ? "EMAIL_PASSWORD" : null
+                }.Where(x => x != null)));
+            logger.LogInformation("   See EMAIL_CONFIGURATION.md for setup instructions");
+        }
+        logger.LogInformation("==================================");
     }
     catch (Exception ex)
     {
