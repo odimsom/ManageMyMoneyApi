@@ -127,9 +127,16 @@ builder.Services.AddCors(options =>
 // ================================
 // Health checks
 // ================================
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+}
+
 builder.Services.AddHealthChecks()
     .AddNpgSql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        connectionString,
         name: "postgres"
     );
 

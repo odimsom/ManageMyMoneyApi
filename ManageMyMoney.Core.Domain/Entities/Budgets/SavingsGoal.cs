@@ -136,7 +136,7 @@ public class SavingsGoal
     {
         get
         {
-            if (!TargetDate.HasValue || DaysRemaining <= 0) return null;
+            if (!DaysRemaining.HasValue || DaysRemaining.Value <= 0) return null;
             var months = Math.Ceiling(DaysRemaining.Value / 30.0);
             if (months <= 0) return null;
             var amount = RemainingAmount.Amount / (decimal)months;

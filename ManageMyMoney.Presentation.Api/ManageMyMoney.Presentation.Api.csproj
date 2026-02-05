@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <!-- Authentication -->
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
     
     <!-- EF Core Design (required for migrations) -->
