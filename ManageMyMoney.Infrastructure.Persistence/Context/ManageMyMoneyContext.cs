@@ -76,6 +76,8 @@ public class ManageMyMoneyContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ManageMyMoneyContext).Assembly);
+
+        ApplySnakeCaseNamingConvention(modelBuilder);
     }
 
     private static void ApplySnakeCaseNamingConvention(ModelBuilder modelBuilder)
