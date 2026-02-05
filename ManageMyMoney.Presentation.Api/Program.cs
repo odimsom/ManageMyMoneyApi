@@ -63,8 +63,13 @@ builder.Services.AddSwaggerGen(options =>
 
 // JWT Authentication
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
-    ?? builder.Configuration["JwtSettings:SecretKey"]
-    ?? "DefaultDevSecretKeyThatIsAtLeast32CharactersLong!";
+    ?? builder.Configuration["JwtSettings:SecretKey"];
+
+// Si no hay clave configurada (ni por variable de entorno ni appsettings), usar valor por defecto para desarrollo
+if (string.IsNullOrEmpty(jwtSecretKey))
+{
+    jwtSecretKey = "DefaultDevSecretKeyThatIsAtLeast32CharactersLong!";
+}
 
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
     ?? builder.Configuration["JwtSettings:Issuer"]
@@ -73,6 +78,11 @@ var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
 var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
     ?? builder.Configuration["JwtSettings:Audience"]
     ?? "ManageMyMoneyUsers";
+
+// Importante: Actualizar la configuración para que IOptions<JwtSettings> reciba estos valores
+builder.Configuration["JwtSettings:SecretKey"] = jwtSecretKey;
+builder.Configuration["JwtSettings:Issuer"] = jwtIssuer;
+builder.Configuration["JwtSettings:Audience"] = jwtAudience;
 
 var secretKey = Encoding.UTF8.GetBytes(jwtSecretKey);
 
