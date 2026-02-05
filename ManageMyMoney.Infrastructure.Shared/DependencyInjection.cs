@@ -17,7 +17,24 @@ public static class DependencyInjection
     {
         // Settings
         services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
-        services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+        
+        // JWT Settings with environment variable fallback
+        services.Configure<JwtSettings>(options =>
+        {
+            var jwtSection = configuration.GetSection("JwtSettings");
+            options.SecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+                ?? jwtSection["SecretKey"]
+                ?? "DefaultDevSecretKeyThatIsAtLeast32CharactersLong!";
+            options.Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+                ?? jwtSection["Issuer"]
+                ?? "ManageMyMoney";
+            options.Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+                ?? jwtSection["Audience"]
+                ?? "ManageMyMoneyUsers";
+            options.AccessTokenExpirationMinutes = jwtSection.GetValue<int>("AccessTokenExpirationMinutes", 60);
+            options.RefreshTokenExpirationDays = jwtSection.GetValue<int>("RefreshTokenExpirationDays", 7);
+        });
+        
         services.Configure<FileStorageSettings>(configuration.GetSection("FileStorageSettings"));
 
         // Email

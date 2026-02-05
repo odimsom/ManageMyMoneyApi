@@ -1,7 +1,9 @@
 using System.Text;
 using ManageMyMoney.Core.Application;
+using ManageMyMoney.Core.Domain.Entities.System;
 using ManageMyMoney.Infrastructure.Persistence;
 using ManageMyMoney.Infrastructure.Persistence.Context;
+using ManageMyMoney.Infrastructure.Persistence.Seeds;
 using ManageMyMoney.Infrastructure.Shared;
 using ManageMyMoney.Presentation.Api.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -131,6 +133,10 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("Applying database migrations...");
         context.Database.Migrate();
         logger.LogInformation("Database migrations applied successfully");
+        
+        logger.LogInformation("Seeding currencies...");
+        await CurrencySeed.SeedAsync(context);
+        logger.LogInformation("Currency seeding completed");
     }
     catch (Exception ex)
     {
