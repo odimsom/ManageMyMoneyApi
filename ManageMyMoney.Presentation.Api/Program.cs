@@ -127,11 +127,11 @@ builder.Services.AddCors(options =>
 // ================================
 // Health checks
 // ================================
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("ManageMyMoneyConnection");
 
 if (string.IsNullOrEmpty(connectionString))
 {
-    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    throw new InvalidOperationException("Connection string 'ManageMyMoneyConnection' not found.");
 }
 
 builder.Services.AddHealthChecks()
