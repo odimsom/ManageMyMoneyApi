@@ -59,13 +59,11 @@ public class AuthService : IAuthService
 
         // Send verification email with all required parameters
         var verificationCode = _tokenService.GenerateRandomToken(6);
-        var verificationUrl = $"https://app.managemymoney.com/verify-email?code={verificationCode}";
+        var verificationUrl = $"{request.VerificationUrl}?code={verificationCode}&email={Uri.EscapeDataString(request.Email)}";
         await _emailService.SendEmailVerificationAsync(
             request.Email, 
             request.FirstName, 
-            verificationCode, 
-            verificationUrl, 
-            60); // 60 minutes expiration
+            verificationUrl);
 
         // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user.Id, request.Email);

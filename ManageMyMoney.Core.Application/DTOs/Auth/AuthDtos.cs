@@ -7,6 +7,7 @@ public record RegisterUserRequest
     public required string FirstName { get; init; }
     public string? LastName { get; init; }
     public string PreferredCurrency { get; init; } = "USD";
+    public required string VerificationUrl { get; init; }
 }
 
 public record LoginRequest

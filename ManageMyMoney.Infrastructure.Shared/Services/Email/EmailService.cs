@@ -229,8 +229,8 @@ public class EmailService : IEmailService
 
     #region System Emails
 
-    public Task<OperationResult> SendEmailVerificationAsync(string to, string userName, string verificationCode, string verificationUrl, int expirationMinutes) =>
-        SendTemplateEmailAsync(to, "System/EmailVerification", new { UserName = userName, VerificationCode = verificationCode, VerificationUrl = verificationUrl, ExpirationMinutes = expirationMinutes, AppUrl = _appUrl, Year = _currentYear });
+    public Task<OperationResult> SendEmailVerificationAsync(string to, string userName, string verificationUrl) =>
+        SendTemplateEmailAsync(to, "System/EmailVerification", new { UserName = userName, VerificationUrl = verificationUrl, AppUrl = _appUrl, Year = _currentYear });
 
     public Task<OperationResult> SendPasswordResetEmailAsync(string to, string userName, string resetUrl, int expirationMinutes) =>
         SendTemplateEmailAsync(to, "System/PasswordReset", new { UserName = userName, ResetUrl = resetUrl, ExpirationMinutes = expirationMinutes, Year = _currentYear });
