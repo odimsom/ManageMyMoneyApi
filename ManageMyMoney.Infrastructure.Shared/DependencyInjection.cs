@@ -19,27 +19,26 @@ public static class DependencyInjection
         services.Configure<EmailSettings>(options =>
         {
             var emailSection = configuration.GetSection("EmailSettings");
-            options.SmtpServer = Environment.GetEnvironmentVariable("SMTP_SERVER")
-                ?? emailSection["SmtpServer"]
-                ?? "smtp.gmail.com";
-            options.SmtpPort = int.TryParse(Environment.GetEnvironmentVariable("SMTP_PORT"), out var port)
-                ? port
-                : emailSection.GetValue<int>("SmtpPort", 587);
+            
+            // For SendGrid API, we only need API Key and sender email
+            options.Password = Environment.GetEnvironmentVariable("SENDGRID_API_KEY")
+                ?? Environment.GetEnvironmentVariable("EMAIL_PASSWORD")
+                ?? emailSection["Password"]
+                ?? string.Empty;
+            
             options.SenderEmail = Environment.GetEnvironmentVariable("SENDER_EMAIL")
                 ?? emailSection["SenderEmail"]
                 ?? string.Empty;
+            
             options.SenderName = Environment.GetEnvironmentVariable("SENDER_NAME")
                 ?? emailSection["SenderName"]
                 ?? "ManageMyMoney";
-            options.Username = Environment.GetEnvironmentVariable("EMAIL_USERNAME")
-                ?? emailSection["Username"]
-                ?? string.Empty;
-            options.Password = Environment.GetEnvironmentVariable("EMAIL_PASSWORD")
-                ?? emailSection["Password"]
-                ?? string.Empty;
-            options.EnableSsl = bool.TryParse(Environment.GetEnvironmentVariable("SMTP_ENABLE_SSL"), out var enableSsl)
-                ? enableSsl
-                : emailSection.GetValue<bool>("EnableSsl", true);
+            
+            // These are not used by SendGrid API but kept for compatibility
+            options.SmtpServer = "smtp.sendgrid.net";
+            options.SmtpPort = 587;
+            options.Username = "apikey";
+            options.EnableSsl = true;
             options.TemplatesPath = emailSection["TemplatesPath"] ?? "Email/Templates";
         });
         
@@ -62,8 +61,8 @@ public static class DependencyInjection
         
         services.Configure<FileStorageSettings>(configuration.GetSection("FileStorageSettings"));
 
-        // Email
-        services.AddTransient<IEmailService, EmailService>();
+        // Email - Using SendGrid API instead of SMTP
+        services.AddTransient<IEmailService, EmailServiceSendGrid>();
 
         // Export
         services.AddTransient<IExportService, ExcelExportService>();

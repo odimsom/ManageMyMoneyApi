@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Mail;
+using SendGrid;
+using SendGrid.Helpers.Mail;
 using ManageMyMoney.Core.Application.Common.Interfaces;
 using ManageMyMoney.Core.Domain.Common;
 using ManageMyMoney.Infrastructure.Shared.Settings;
