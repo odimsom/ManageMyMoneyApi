@@ -57,27 +57,40 @@ public class AuthService : IAuthService
 
         var user = userResult.Value!;
 
-        // Send verification email in background (non-blocking)
+        // Send verification email with timeout (non-blocking after 3 seconds)
         var verificationCode = _tokenService.GenerateRandomToken(6);
         var verificationUrl = $"https://app.managemymoney.com/verify-email?code={verificationCode}";
         
-        // Fire and forget - don't wait for email to send
-        _ = Task.Run(async () =>
+        // Try to send email with 3-second timeout, then continue regardless
+        var emailTask = Task.Run(async () =>
         {
             try
             {
-                await _emailService.SendEmailVerificationAsync(
+                _logger.LogInformation("🚀 Starting email send task for {Email}", request.Email);
+                var result = await _emailService.SendEmailVerificationAsync(
                     request.Email,
                     request.FirstName,
                     verificationCode,
                     verificationUrl,
                     60); // 60 minutes expiration
+                
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation("✅ Email verification sent successfully to {Email}", request.Email);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ Email verification failed for {Email}: {Error}", request.Email, result.Error);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send verification email to {Email} (non-blocking)", request.Email);
+                _logger.LogError(ex, "❌ Exception sending verification email to {Email}", request.Email);
             }
         });
+
+        // Wait up to 3 seconds for email, then continue
+        _ = Task.WhenAny(emailTask, Task.Delay(3000));
 
         // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user.Id, request.Email);

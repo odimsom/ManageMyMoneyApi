@@ -332,6 +332,26 @@ public class EmailService : IEmailService
 
             _logger.LogWarning("Email configuration incomplete. Missing variables: {MissingVars}", string.Join(", ", missing));
         }
+        else
+        {
+            // Log password format validation (without revealing the actual password)
+            var passwordPrefix = _settings.Password.Length >= 3 ? _settings.Password.Substring(0, 3) : "???";
+            _logger.LogInformation("Email credentials: Username={Username}, Password starts with '{Prefix}...' (length: {Length})",
+                _settings.Username, passwordPrefix, _settings.Password.Length);
+            
+            // Validate SendGrid API Key format
+            if (_settings.SmtpServer.Contains("sendgrid", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_settings.Password.StartsWith("SG."))
+                {
+                    _logger.LogWarning("⚠️ Using SendGrid but PASSWORD doesn't start with 'SG.' - this may be incorrect");
+                }
+                if (_settings.Username != "apikey")
+                {
+                    _logger.LogWarning("⚠️ Using SendGrid but USERNAME is not 'apikey' (it's '{Username}') - should be 'apikey'", _settings.Username);
+                }
+            }
+        }
 
         return isValid;
     }
