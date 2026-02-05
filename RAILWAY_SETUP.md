@@ -95,9 +95,21 @@ PORT=8080
    SMTP_ENABLE_SSL=true
    ```
 
-5. **Deploy**:
+5. **Deploy y verificación**:
    - Railway automáticamente hará deploy después de configurar las variables
-   - Verifica los logs para asegurarte de que todo está funcionando
+   - Verifica los logs iniciales para confirmar:
+     ```
+     Email templates base path: /app/Email/Templates
+     ```
+   - Si ves errores, verifica que las plantillas se copiaron correctamente
+
+6. **Hacer commit y push** de los cambios recientes:
+   ```bash
+   git add .
+   git commit -m "Fix email templates path for Docker deployment"
+   git push
+   ```
+   Railway automáticamente hará redeploy
 
 ## Verificar que los Emails Funcionan
 

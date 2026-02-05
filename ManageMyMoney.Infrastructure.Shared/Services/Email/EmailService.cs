@@ -14,6 +14,7 @@ public class EmailService : IEmailService
     private readonly ILogger<EmailService> _logger;
     private readonly string _appUrl;
     private readonly int _currentYear;
+    private readonly string _templatesBasePath;
 
     public EmailService(IOptions<EmailSettings> settings, ILogger<EmailService> logger)
     {
@@ -21,6 +22,12 @@ public class EmailService : IEmailService
         _logger = logger;
         _appUrl = "https://app.managemymoney.com";
         _currentYear = DateTime.UtcNow.Year;
+        
+        // Resolve templates path relative to application base directory
+        var baseDir = AppContext.BaseDirectory;
+        _templatesBasePath = Path.Combine(baseDir, _settings.TemplatesPath);
+        
+        _logger.LogInformation("Email templates base path: {Path}", _templatesBasePath);
     }
 
     #region Base Methods
@@ -51,10 +58,10 @@ public class EmailService : IEmailService
     {
         try
         {
-            var templatePath = Path.Combine(_settings.TemplatesPath, $"{templateName}.html");
+            var templatePath = Path.Combine(_templatesBasePath, $"{templateName}.html");
             if (!File.Exists(templatePath))
             {
-                _logger.LogWarning("Email template not found: {Template}", templateName);
+                _logger.LogWarning("Email template not found: {Template} at {Path}", templateName, templatePath);
                 return OperationResult.Failure($"Template not found: {templateName}");
             }
 
