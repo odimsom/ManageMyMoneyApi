@@ -60,8 +60,14 @@ public class EmailService : IEmailService
         try
         {
             _logger.LogInformation("📤 Attempting to send email to {Recipient}: {Subject}", to, subject);
+            _logger.LogInformation("   SMTP Config: Server={Server}, Port={Port}, Username={Username}, SSL={SSL}", 
+                _settings.SmtpServer, _settings.SmtpPort, _settings.Username, _settings.EnableSsl);
+            
             using var client = CreateSmtpClient();
+            _logger.LogInformation("   SMTP client created, connecting...");
+            
             using var message = CreateMailMessage(to, subject, body);
+            _logger.LogInformation("   Mail message created, sending...");
             
             await client.SendMailAsync(message);
             
@@ -71,21 +77,24 @@ public class EmailService : IEmailService
         catch (SmtpException ex)
         {
             _logger.LogError(ex, "❌ SMTP error sending email to {Recipient}. Status: {Status}, Code: {Code}. " +
-                "Check: 1) App Password is correct (not regular password), 2) 2FA is enabled on Gmail, 3) Network connectivity",
-                to, ex.StatusCode, ex.Message);
+                "Check: 1) SendGrid API Key is correct, 2) API Key has Mail Send permissions, 3) Network connectivity. " +
+                "InnerException: {InnerException}",
+                to, ex.StatusCode, ex.Message, ex.InnerException?.Message ?? "none");
             // Return success to not block user flow, but log the error
             return OperationResult.Success();
         }
         catch (System.Net.Sockets.SocketException ex)
         {
-            _logger.LogError(ex, "❌ Network error connecting to SMTP server. " +
-                "Check: 1) SMTP_SERVER and SMTP_PORT are correct, 2) Railway can reach smtp.gmail.com:587",
-                to);
+            _logger.LogError(ex, "❌ Network error connecting to SMTP server {Server}:{Port}. " +
+                "Check: 1) SMTP_SERVER and SMTP_PORT are correct, 2) Railway can reach smtp.sendgrid.net:587. " +
+                "Error Code: {ErrorCode}",
+                _settings.SmtpServer, _settings.SmtpPort, ex.SocketErrorCode);
             return OperationResult.Success();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Failed to send email to {Recipient}", to);
+            _logger.LogError(ex, "❌ Unexpected error sending email to {Recipient}. Type: {ExceptionType}, Message: {Message}", 
+                to, ex.GetType().Name, ex.Message);
             return OperationResult.Success();
         }
     }
