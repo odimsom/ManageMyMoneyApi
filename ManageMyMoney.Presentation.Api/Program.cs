@@ -1,6 +1,5 @@
 using System.Text;
 using ManageMyMoney.Core.Application;
-using ManageMyMoney.Core.Domain.Entities.System;
 using ManageMyMoney.Infrastructure.Persistence;
 using ManageMyMoney.Infrastructure.Persistence.Context;
 using ManageMyMoney.Infrastructure.Persistence.Seeds;
@@ -13,21 +12,28 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Railway usa PORT como variable de entorno
+// ================================
+// Railway PORT
+// ================================
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://*:{port}");
 
-// Controllers
+// ================================
+// Controllers & JSON
+// ================================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger
+// ================================
+// Swagger (SIEMPRE ACTIVO)
+// ================================
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -63,18 +69,23 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// JWT Authentication
-var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
-    ?? builder.Configuration["JwtSettings:SecretKey"]
-    ?? "DefaultDevSecretKeyThatIsAtLeast32CharactersLong!";
+// ================================
+// JWT
+// ================================
+var jwtSecretKey =
+    Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ??
+    builder.Configuration["JwtSettings:SecretKey"] ??
+    "DefaultDevSecretKeyThatIsAtLeast32CharactersLong!";
 
-var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
-    ?? builder.Configuration["JwtSettings:Issuer"]
-    ?? "ManageMyMoney";
+var jwtIssuer =
+    Environment.GetEnvironmentVariable("JWT_ISSUER") ??
+    builder.Configuration["JwtSettings:Issuer"] ??
+    "ManageMyMoney";
 
-var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
-    ?? builder.Configuration["JwtSettings:Audience"]
-    ?? "ManageMyMoneyUsers";
+var jwtAudience =
+    Environment.GetEnvironmentVariable("JWT_AUDIENCE") ??
+    builder.Configuration["JwtSettings:Audience"] ??
+    "ManageMyMoneyUsers";
 
 var secretKey = Encoding.UTF8.GetBytes(jwtSecretKey);
 
@@ -100,7 +111,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// CORS
+// ================================
+// CORS (temporal, no ideal)
+// ================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -111,75 +124,68 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ================================
 // Health checks
-builder.Services.AddHealthChecks();
+// ================================
+builder.Services.AddHealthChecks()
+    .AddNpgSql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        name: "postgres"
+    );
 
 builder.Services.AddHttpContextAccessor();
 
-// Application Services
+// ================================
+// Application / Infrastructure
+// ================================
 builder.Services.AddApplicationServices();
 builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 
+// ================================
+// Build
+// ================================
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente
-using (var scope = app.Services.CreateScope())
+// ================================
+// Controlled DB init (SAFE)
+// ================================
+var runMigrations =
+    Environment.GetEnvironmentVariable("RUN_DB_MIGRATIONS") == "true";
+
+if (runMigrations)
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ManageMyMoneyContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
     try
     {
-        logger.LogInformation("Applying database migrations...");
+        logger.LogInformation("Running database migrations...");
         context.Database.Migrate();
-        logger.LogInformation("Database migrations applied successfully");
-        
-        logger.LogInformation("Seeding currencies...");
+
+        logger.LogInformation("Running currency seed...");
         await CurrencySeed.SeedAsync(context);
-        logger.LogInformation("Currency seeding completed");
-        
-        // Validate email configuration
-        logger.LogInformation("=== Email Configuration Status ===");
-        var sendGridApiKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY") 
-                           ?? Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
-        var senderEmail = Environment.GetEnvironmentVariable("SENDER_EMAIL");
-        
-        if (!string.IsNullOrWhiteSpace(sendGridApiKey) &&
-            !string.IsNullOrWhiteSpace(senderEmail))
-        {
-            var keyPreview = sendGridApiKey.Length >= 10 ? sendGridApiKey.Substring(0, 10) + "..." : "???";
-            logger.LogInformation("✅ SendGrid API: CONFIGURED - API Key: {Key}, From: {Sender}", 
-                keyPreview, senderEmail);
-        }
-        else
-        {
-            logger.LogWarning("⚠️  SendGrid API: NOT CONFIGURED - Emails will not be sent");
-            var missing = new List<string>();
-            if (string.IsNullOrWhiteSpace(sendGridApiKey)) missing.Add("SENDGRID_API_KEY");
-            if (string.IsNullOrWhiteSpace(senderEmail)) missing.Add("SENDER_EMAIL");
-            logger.LogWarning("   Missing variables: {Missing}", string.Join(", ", missing));
-            logger.LogInformation("   Set: SENDGRID_API_KEY=your-api-key SENDER_EMAIL=your-verified-email@gmail.com");
-        }
-        logger.LogInformation("==================================");
+
+        logger.LogInformation("Database initialization completed");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error applying migrations");
+        logger.LogCritical(ex, "Database initialization failed");
+        throw;
     }
 }
 
-// Swagger siempre habilitado
+// ================================
+// Middleware pipeline
+// ================================
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "ManageMyMoney API v1");
-    options.RoutePrefix = string.Empty;
+    options.RoutePrefix = "swagger";
 });
 
-// Health check endpoint
-app.MapHealthChecks("/health");
-
-// Middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseCors("AllowAll");
@@ -187,6 +193,10 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ================================
+// Endpoints
+// ================================
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();
