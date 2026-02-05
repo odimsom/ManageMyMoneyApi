@@ -84,8 +84,11 @@ public class ManageMyMoneyContext : DbContext
     {
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
         {
-            // Table names
-            entity.SetTableName(ToSnakeCase(entity.GetTableName() ?? entity.ClrType.Name));
+            // Table names - only for non-owned entities
+            if (!entity.IsOwned())
+            {
+                entity.SetTableName(ToSnakeCase(entity.GetTableName() ?? entity.ClrType.Name));
+            }
 
             // Column names
             foreach (var property in entity.GetProperties())
