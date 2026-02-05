@@ -1,0 +1,120 @@
+using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using ManageMyMoney.Core.Domain.Entities.Auth;
+using ManageMyMoney.Core.Domain.Entities.Expenses;
+using ManageMyMoney.Core.Domain.Entities.Income;
+using ManageMyMoney.Core.Domain.Entities.Categories;
+using ManageMyMoney.Core.Domain.Entities.Accounts;
+using ManageMyMoney.Core.Domain.Entities.Budgets;
+using ManageMyMoney.Core.Domain.Entities.Notifications;
+using ManageMyMoney.Core.Domain.Entities.System;
+using ManageMyMoney.Infrastructure.Persistence.Extensions;
+
+namespace ManageMyMoney.Infrastructure.Persistence.Context;
+
+public class ManageMyMoneyContext : DbContext
+{
+    public ManageMyMoneyContext(DbContextOptions<ManageMyMoneyContext> options)
+        : base(options)
+    {
+    }
+
+    #region DbSets - Auth
+    public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+    #endregion
+
+    #region DbSets - Expenses
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<RecurringExpense> RecurringExpenses => Set<RecurringExpense>();
+    public DbSet<ExpenseAttachment> ExpenseAttachments => Set<ExpenseAttachment>();
+    public DbSet<ExpenseTag> ExpenseTags => Set<ExpenseTag>();
+    public DbSet<ExpenseSplit> ExpenseSplits => Set<ExpenseSplit>();
+    #endregion
+
+    #region DbSets - Income
+    public DbSet<Income> Incomes => Set<Income>();
+    public DbSet<RecurringIncome> RecurringIncomes => Set<RecurringIncome>();
+    public DbSet<IncomeSource> IncomeSources => Set<IncomeSource>();
+    #endregion
+
+    #region DbSets - Categories
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Subcategory> Subcategories => Set<Subcategory>();
+    public DbSet<CategoryBudget> CategoryBudgets => Set<CategoryBudget>();
+    #endregion
+
+    #region DbSets - Accounts
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+    public DbSet<AccountTransaction> AccountTransactions => Set<AccountTransaction>();
+    public DbSet<CreditCard> CreditCards => Set<CreditCard>();
+    #endregion
+
+    #region DbSets - Budgets
+    public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
+    public DbSet<GoalContribution> GoalContributions => Set<GoalContribution>();
+    #endregion
+
+    #region DbSets - Notifications
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Reminder> Reminders => Set<Reminder>();
+    public DbSet<Alert> Alerts => Set<Alert>();
+    #endregion
+
+    #region DbSets - System
+    public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<TaxRate> TaxRates => Set<TaxRate>();
+    #endregion
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        ApplySnakeCaseNamingConvention(modelBuilder);
+    }
+
+    private static void ApplySnakeCaseNamingConvention(ModelBuilder modelBuilder)
+    {
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            var tableName = entity.GetTableName();
+            if (tableName is not null)
+                entity.SetTableName(tableName.ToSnakeCase());
+
+            foreach (var property in entity.GetProperties())
+            {
+                var columnName = property.GetColumnName();
+                property.SetColumnName(columnName.ToSnakeCase());
+            }
+
+            foreach (var key in entity.GetKeys())
+            {
+                var keyName = key.GetName();
+                if (keyName is not null)
+                    key.SetName(keyName.ToSnakeCase());
+            }
+
+            foreach (var fk in entity.GetForeignKeys())
+            {
+                var fkName = fk.GetConstraintName();
+                if (fkName is not null)
+                    fk.SetConstraintName(fkName.ToSnakeCase());
+            }
+
+            foreach (var index in entity.GetIndexes())
+            {
+                var indexName = index.GetDatabaseName();
+                if (indexName is not null)
+                    index.SetDatabaseName(indexName.ToSnakeCase());
+            }
+        }
+    }
+}
