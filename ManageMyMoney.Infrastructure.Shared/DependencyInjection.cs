@@ -15,8 +15,33 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Settings
-        services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
+        // Email Settings with environment variable fallback
+        services.Configure<EmailSettings>(options =>
+        {
+            var emailSection = configuration.GetSection("EmailSettings");
+            options.SmtpServer = Environment.GetEnvironmentVariable("SMTP_SERVER")
+                ?? emailSection["SmtpServer"]
+                ?? "smtp.gmail.com";
+            options.SmtpPort = int.TryParse(Environment.GetEnvironmentVariable("SMTP_PORT"), out var port)
+                ? port
+                : emailSection.GetValue<int>("SmtpPort", 587);
+            options.SenderEmail = Environment.GetEnvironmentVariable("SENDER_EMAIL")
+                ?? emailSection["SenderEmail"]
+                ?? string.Empty;
+            options.SenderName = Environment.GetEnvironmentVariable("SENDER_NAME")
+                ?? emailSection["SenderName"]
+                ?? "ManageMyMoney";
+            options.Username = Environment.GetEnvironmentVariable("EMAIL_USERNAME")
+                ?? emailSection["Username"]
+                ?? string.Empty;
+            options.Password = Environment.GetEnvironmentVariable("EMAIL_PASSWORD")
+                ?? emailSection["Password"]
+                ?? string.Empty;
+            options.EnableSsl = bool.TryParse(Environment.GetEnvironmentVariable("SMTP_ENABLE_SSL"), out var enableSsl)
+                ? enableSsl
+                : emailSection.GetValue<bool>("EnableSsl", true);
+            options.TemplatesPath = emailSection["TemplatesPath"] ?? "Email/Templates";
+        });
         
         // JWT Settings with environment variable fallback
         services.Configure<JwtSettings>(options =>

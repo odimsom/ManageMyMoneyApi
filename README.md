@@ -279,7 +279,62 @@ const createExpense = async (token, expense) => {
 
 ---
 
-## 🚨 Códigos de Error
+## � Despliegue en Railway
+
+### Variables de Entorno Requeridas
+
+Para desplegar en producción (Railway), debes configurar las siguientes variables de entorno:
+
+#### 🔑 JWT (Requerido)
+```bash
+JWT_SECRET_KEY=TuClaveSecretaSuperSeguraDeAlMenos32CaracteresParaProduccion!
+```
+
+#### 📧 Email/SMTP (Requerido para notificaciones)
+```bash
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SENDER_EMAIL=tuemail@gmail.com
+SENDER_NAME=ManageMyMoney
+EMAIL_USERNAME=tuemail@gmail.com
+EMAIL_PASSWORD=tu-contraseña-de-aplicacion-de-gmail
+SMTP_ENABLE_SSL=true
+```
+
+> **⚠️ Importante para Gmail**: Debes generar una "Contraseña de aplicación":
+> 1. Ve a https://myaccount.google.com/security
+> 2. Activa la verificación en 2 pasos
+> 3. Genera una contraseña de aplicación para "Correo"
+> 4. Usa esa contraseña en `EMAIL_PASSWORD` (NO tu contraseña normal)
+
+#### 🗄️ Base de Datos
+Railway proporciona automáticamente `DATABASE_URL` cuando agregas PostgreSQL.
+
+#### 📖 Guía Completa
+Ver [RAILWAY_SETUP.md](RAILWAY_SETUP.md) para instrucciones detalladas.
+
+### Monedas Soportadas 🌍
+
+La API incluye estas monedas por defecto:
+- 🇺🇸 USD - US Dollar
+- 🇪🇺 EUR - Euro  
+- 🇬🇧 GBP - British Pound
+- 🇯🇵 JPY - Japanese Yen
+- 🇨🇦 CAD - Canadian Dollar
+- 🇦🇺 AUD - Australian Dollar
+- 🇨🇭 CHF - Swiss Franc
+- 🇨🇳 CNY - Chinese Yuan
+- 🇲🇽 MXN - Mexican Peso
+- 🇧🇷 BRL - Brazilian Real
+- 🇦🇷 ARS - Argentine Peso
+- 🇨🇴 COP - Colombian Peso
+- 🇨🇱 CLP - Chilean Peso
+- 🇵🇪 PEN - Peruvian Sol
+- 🇩🇴 **DOP - Dominican Peso (RD$)**
+
+---
+
+## �🚨 Códigos de Error
 
 | Código | Descripción |
 |--------|-------------|

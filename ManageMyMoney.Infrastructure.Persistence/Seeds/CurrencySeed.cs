@@ -25,7 +25,8 @@ public static class CurrencySeed
             ("ARS", "Argentine Peso", "$", 2),
             ("COP", "Colombian Peso", "$", 2),
             ("CLP", "Chilean Peso", "$", 0),
-            ("PEN", "Peruvian Sol", "S/", 2)
+            ("PEN", "Peruvian Sol", "S/", 2),
+            ("DOP", "Dominican Peso", "RD$", 2)
         };
 
         foreach (var (code, name, symbol, decimals) in currencies)
