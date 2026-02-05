@@ -25,6 +25,9 @@
     
     <!-- Password Hashing -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    
+    <!-- Data Protection (para silenciar warnings) -->
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup>
