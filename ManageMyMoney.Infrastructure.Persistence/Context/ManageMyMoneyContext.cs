@@ -93,12 +93,6 @@ public class ManageMyMoneyContext : DbContext
                 property.SetColumnName(ToSnakeCase(property.Name));
             }
 
-            // Keys
-            foreach (var key in entity.GetKeys())
-            {
-                key.SetName(ToSnakeCase(key.GetName() ?? $"pk_{entity.GetTableName()}"));
-            }
-
             // Foreign keys
             foreach (var foreignKey in entity.GetForeignKeys())
             {

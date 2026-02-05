@@ -165,7 +165,12 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("Seeding currencies...");
         await CurrencySeed.SeedAsync(context);
         logger.LogInformation("Currency seeding completed");
-        
+// Validar configuración de email independientemente de las migraciones
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
         // Validate email configuration
         logger.LogInformation("=== Email Configuration Status ===");
         var sendGridApiKey = Environment.GetEnvironmentVariable("SENDGRID_API_KEY") 
@@ -192,7 +197,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error applying migrations");
+        logger.LogError(ex, "Error validating email configuration");
     }
 }
 
