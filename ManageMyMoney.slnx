@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="ManageMyMoney.Core.Application/ManageMyMoney.Core.Application.csproj" />
+    <Project Path="ManageMyMoney.Core.Domain/ManageMyMoney.Core.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="ManageMyMoney.Infrastructure.Persistence/ManageMyMoney.Infrastructure.Persistence.csproj" />
+    <Project Path="ManageMyMoney.Infrastructure.Shared/ManageMyMoney.Infrastructure.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="ManageMyMoney.Presentation.Api/ManageMyMoney.Presentation.Api.csproj" />
+  </Folder>
+</Solution>
