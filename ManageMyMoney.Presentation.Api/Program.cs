@@ -1,53 +1,39 @@
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using ManageMyMoney.Core.Application;
-using ManageMyMoney.Core.Domain.Entities.System;
 using ManageMyMoney.Infrastructure.Persistence;
 using ManageMyMoney.Infrastructure.Persistence.Context;
 using ManageMyMoney.Infrastructure.Persistence.Seeds;
 using ManageMyMoney.Infrastructure.Shared;
 using ManageMyMoney.Presentation.Api.Middleware;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 var builder = WebApplication.CreateBuilder(args);
 
-// Railway usa PORT como variable de entorno
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://*:{port}");
+// Add services to the container.
+builder.Services.AddControllers();
 
-// Controllers
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
-    });
-
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-
-// Swagger
-builder.Services.AddSwaggerGen(options =>
+builder.Services.AddSwaggerGen(c =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "ManageMyMoney API",
-        Version = "v1",
-        Description = "API para gestión de gastos personales"
-    });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ManageMyMoney API", Version = "v1" });
 
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    // JWT Bearer authentication
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
         Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Ingresa el token JWT"
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
     });
 
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
@@ -63,108 +49,138 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// JWT Authentication
-var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
-    ?? builder.Configuration["JwtSettings:SecretKey"]
-    ?? "DefaultDevSecretKeyThatIsAtLeast32CharactersLong!";
-
-var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
-    ?? builder.Configuration["JwtSettings:Issuer"]
-    ?? "ManageMyMoney";
-
-var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
-    ?? builder.Configuration["JwtSettings:Audience"]
-    ?? "ManageMyMoneyUsers";
-
-var secretKey = Encoding.UTF8.GetBytes(jwtSecretKey);
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(secretKey),
-        ClockSkew = TimeSpan.Zero
-    };
-});
-
-builder.Services.AddAuthorization();
-
-// CORS
+// CORS configuration
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-    {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
+              .AllowAnyHeader());
 });
 
-// Health checks & DB Connection
-static string GetConnectionString(IConfiguration configuration)
-{
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (!string.IsNullOrEmpty(databaseUrl))
+// Health checks
+builder.Services.AddHealthChecks();
+
+// JWT Configuration
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+    ?? builder.Configuration["Jwt:SecretKey"]
+    ?? throw new ArgumentNullException("JWT_SECRET_KEY", "JWT Secret Key is required");
+
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+    ?? builder.Configuration["Jwt:Issuer"]
+    ?? throw new ArgumentNullException("JWT_ISSUER", "JWT Issuer is required");
+
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+    ?? builder.Configuration["Jwt:Audience"]
+    ?? throw new ArgumentNullException("JWT_AUDIENCE", "JWT Audience is required");
+
+// JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        return ConvertDatabaseUrlToConnectionString(databaseUrl);
-    }
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
-    return configuration.GetConnectionString("ManageMyMoneyConnection")
-        ?? throw new InvalidOperationException("Database connection string not found");
-}
+builder.Services.AddAuthorization();
 
-static string ConvertDatabaseUrlToConnectionString(string databaseUrl)
+// Configure forward headers for Railway
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    var username = userInfo[0];
-    var password = userInfo.Length > 1 ? userInfo[1] : "";
-    var host = uri.Host;
-    var port = uri.Port > 0 ? uri.Port : 5432;
-    var database = uri.AbsolutePath.TrimStart('/');
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
-    return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+// Database configuration
+string connectionString = "";
+
+if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("RAILWAY_ENVIRONMENT")))
+{
+    // Railway environment
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        var uri = new Uri(databaseUrl);
+        var host = uri.Host;
+        var port_db = uri.Port;
+        var database = uri.AbsolutePath.TrimStart('/');
+        var username = uri.UserInfo.Split(':')[0];
+        var password = uri.UserInfo.Split(':')[1];
+
+        connectionString = $"Host={host};Port={port_db};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+        builder.Services.AddDbContext<ManageMyMoneyContext>(options =>
+            options.UseNpgsql(connectionString)
+                   .EnableSensitiveDataLogging(false)
+                   .EnableDetailedErrors(false));
+    }
+}
+else
+{
+    // Local development
+    connectionString = builder.Configuration.GetConnectionString("ManageMyMoneyConnection")!;
+    builder.Services.AddDbContext<ManageMyMoneyContext>(options =>
+        options.UseNpgsql(connectionString)
+               .EnableSensitiveDataLogging()
+               .EnableDetailedErrors());
 }
 
-var connectionString = GetConnectionString(builder.Configuration);
+// Configure Kestrel to use the PORT environment variable
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(int.Parse(port));
+});
 
-builder.Services.AddHealthChecks()
-    .AddNpgSql(connectionString, name: "postgres");
-
-builder.Services.AddHttpContextAccessor();
-
-// Application Services
 builder.Services.AddApplicationServices();
 builder.Services.AddPersistenceServices(connectionString);
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente
-using (var scope = app.Services.CreateScope())
+// Verificar si se deben ejecutar las migraciones automáticamente
+var runMigrations = Environment.GetEnvironmentVariable("RUN_MIGRATIONS")?.ToLowerInvariant() == "true";
+
+if (runMigrations)
 {
-    var context = scope.ServiceProvider.GetRequiredService<ManageMyMoneyContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    try
+    // Aplicar migraciones automáticamente
+    using (var scope = app.Services.CreateScope())
     {
-        logger.LogInformation("Applying database migrations...");
-        context.Database.Migrate();
-        logger.LogInformation("Database migrations applied successfully");
-        
-        logger.LogInformation("Seeding currencies...");
-        await CurrencySeed.SeedAsync(context);
-        logger.LogInformation("Currency seeding completed");
+        var context = scope.ServiceProvider.GetRequiredService<ManageMyMoneyContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        try
+        {
+            logger.LogInformation("Applying database migrations...");
+            context.Database.Migrate();
+            logger.LogInformation("Database migrations applied successfully");
+            
+            logger.LogInformation("Seeding currencies...");
+            await CurrencySeed.SeedAsync(context);
+            logger.LogInformation("Currency seeding completed");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error applying migrations");
+        }
+    }
+}
+else
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("Skipping database migrations (RUN_MIGRATIONS not set to 'true')");
+    }
+}
+
 // Validar configuración de email independientemente de las migraciones
 using (var scope = app.Services.CreateScope())
 {
