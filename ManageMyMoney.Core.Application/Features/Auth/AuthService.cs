@@ -57,15 +57,27 @@ public class AuthService : IAuthService
 
         var user = userResult.Value!;
 
-        // Send verification email with all required parameters
+        // Send verification email in background (non-blocking)
         var verificationCode = _tokenService.GenerateRandomToken(6);
         var verificationUrl = $"https://app.managemymoney.com/verify-email?code={verificationCode}";
-        await _emailService.SendEmailVerificationAsync(
-            request.Email, 
-            request.FirstName, 
-            verificationCode, 
-            verificationUrl, 
-            60); // 60 minutes expiration
+        
+        // Fire and forget - don't wait for email to send
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendEmailVerificationAsync(
+                    request.Email,
+                    request.FirstName,
+                    verificationCode,
+                    verificationUrl,
+                    60); // 60 minutes expiration
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send verification email to {Email} (non-blocking)", request.Email);
+            }
+        });
 
         // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user.Id, request.Email);
@@ -165,11 +177,22 @@ public class AuthService : IAuthService
         var resetToken = _tokenService.GenerateRandomToken();
         var resetUrl = $"https://app.managemymoney.com/reset-password?token={resetToken}";
 
-        await _emailService.SendPasswordResetEmailAsync(
-            request.Email, 
-            user.FirstName, 
-            resetUrl, 
-            60); // 60 minutes expiration
+        // Send password reset email in background (non-blocking)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _emailService.SendPasswordResetEmailAsync(
+                    request.Email,
+                    user.FirstName,
+                    resetUrl,
+                    60); // 60 minutes expiration
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send password reset email to {Email} (non-blocking)", request.Email);
+            }
+        });
 
         return OperationResult.Success();
     }

@@ -59,16 +59,28 @@ public class EmailService : IEmailService
 
         try
         {
+            _logger.LogInformation("📤 Attempting to send email to {Recipient}: {Subject}", to, subject);
             using var client = CreateSmtpClient();
             using var message = CreateMailMessage(to, subject, body);
+            
             await client.SendMailAsync(message);
-            _logger.LogInformation("📧 Email sent successfully to {Recipient}: {Subject}", to, subject);
+            
+            _logger.LogInformation("✅ Email sent successfully to {Recipient}: {Subject}", to, subject);
             return OperationResult.Success();
         }
         catch (SmtpException ex)
         {
-            _logger.LogError(ex, "❌ SMTP error sending email to {Recipient}. Check SMTP credentials and network connectivity.", to);
+            _logger.LogError(ex, "❌ SMTP error sending email to {Recipient}. Status: {Status}, Code: {Code}. " +
+                "Check: 1) App Password is correct (not regular password), 2) 2FA is enabled on Gmail, 3) Network connectivity",
+                to, ex.StatusCode, ex.Message);
             // Return success to not block user flow, but log the error
+            return OperationResult.Success();
+        }
+        catch (System.Net.Sockets.SocketException ex)
+        {
+            _logger.LogError(ex, "❌ Network error connecting to SMTP server. " +
+                "Check: 1) SMTP_SERVER and SMTP_PORT are correct, 2) Railway can reach smtp.gmail.com:587",
+                to);
             return OperationResult.Success();
         }
         catch (Exception ex)
@@ -321,7 +333,7 @@ public class EmailService : IEmailService
         {
             Credentials = new NetworkCredential(_settings.Username, _settings.Password),
             EnableSsl = _settings.EnableSsl,
-            Timeout = 30000
+            Timeout = 10000 // 10 seconds - fail fast if SMTP is unavailable
         };
     }
 
