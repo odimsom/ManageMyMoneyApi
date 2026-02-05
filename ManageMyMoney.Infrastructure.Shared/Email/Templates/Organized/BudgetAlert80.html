@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Alerta de presupuesto</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: Arial, Helvetica, sans-serif; color: #e5e7eb;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #020617;">
+    <div style="background-color: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 28px;">
+      <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #fbbf24;">
+        ⚠️ Alerta: 80% del presupuesto usado
+      </h1>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5;">
+        Hola {{UserName}}, tu presupuesto <strong>{{BudgetName}}</strong> está llegando al límite.
+      </p>
+
+      <div style="background-color: #1e293b; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #94a3b8;">Límite:</span>
+          <span style="color: #f8fafc; font-weight: bold;">{{Limit}}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #94a3b8;">Gastado:</span>
+          <span style="color: #fbbf24; font-weight: bold;">{{Current}}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #94a3b8;">Disponible:</span>
+          <span style="color: #22c55e; font-weight: bold;">{{Remaining}}</span>
+        </div>
+        
+        <div style="margin-top: 16px; background-color: #374151; border-radius: 9999px; height: 8px; overflow: hidden;">
+          <div style="background: linear-gradient(90deg, #22c55e 0%, #fbbf24 80%, #ef4444 100%); height: 100%; width: {{PercentageUsed}}%;"></div>
+        </div>
+        <p style="margin: 8px 0 0 0; text-align: center; font-size: 14px; color: #fbbf24; font-weight: bold;">{{PercentageUsed}}% usado</p>
+      </div>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5;">
+        Tienes <strong>{{DaysRemaining}} días</strong> restantes en este período. 
+        Considera reducir gastos para mantenerte dentro del presupuesto.
+      </p>
+
+      <a href="{{AppUrl}}/budgets/{{BudgetId}}" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background-color: #fbbf24; color: #0f172a; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 14px;">
+        Revisar presupuesto
+      </a>
+    </div>
+
+    <div style="margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center;">
+      © {{Year}} ManageMyMoney · Mantén el control
+    </div>
+  </div>
+</body>
+</html>

@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ManageMyMoney.Core.Domain\ManageMyMoney.Core.Domain.csproj" />
+    <ProjectReference Include="..\ManageMyMoney.Core.Application\ManageMyMoney.Core.Application.csproj" />
   </ItemGroup>
 
 </Project>

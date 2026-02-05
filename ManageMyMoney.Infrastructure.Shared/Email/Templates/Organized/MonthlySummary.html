@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resumen mensual</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: Arial, Helvetica, sans-serif; color: #e5e7eb;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #020617;">
+    <div style="background-color: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 28px;">
+      <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #f8fafc;">
+        📊 Tu resumen de {{MonthName}} {{Year}}
+      </h1>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5;">
+        Hola {{UserName}}, aquí está tu análisis financiero del mes:
+      </p>
+
+      <!-- Balance general -->
+      <div style="display: flex; gap: 12px; margin: 20px 0;">
+        <div style="flex: 1; background: linear-gradient(135deg, #059669 0%, #047857 100%); border-radius: 12px; padding: 20px; text-align: center;">
+          <p style="margin: 0 0 4px 0; font-size: 12px; color: #d1fae5;">Ingresos</p>
+          <p style="margin: 0; font-size: 20px; font-weight: bold; color: #ffffff;">{{TotalIncome}}</p>
+        </div>
+        <div style="flex: 1; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border-radius: 12px; padding: 20px; text-align: center;">
+          <p style="margin: 0 0 4px 0; font-size: 12px; color: #fecaca;">Gastos</p>
+          <p style="margin: 0; font-size: 20px; font-weight: bold; color: #ffffff;">{{TotalExpenses}}</p>
+        </div>
+      </div>
+
+      <!-- Balance neto -->
+      <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #93c5fd;">Balance del mes</p>
+        <p style="margin: 0; font-size: 32px; font-weight: bold; color: #ffffff;">{{NetBalance}}</p>
+        <p style="margin: 8px 0 0 0; font-size: 14px; color: #93c5fd;">Tasa de ahorro: {{SavingsRate}}%</p>
+      </div>
+
+      <!-- Top categorías -->
+      <h3 style="margin: 24px 0 12px 0; font-size: 16px; color: #f8fafc;">Top categorías de gasto</h3>
+      <div style="background-color: #1e293b; border-radius: 8px; padding: 16px;">
+        {{TopCategoriesHtml}}
+      </div>
+
+      <!-- Comparación con mes anterior -->
+      <div style="background-color: #1e293b; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #94a3b8;">vs. mes anterior</p>
+        <p style="margin: 0; font-size: 18px; font-weight: bold; color: {{ComparisonColor}};">
+          {{ComparisonIcon}} {{ComparisonText}}
+        </p>
+      </div>
+
+      <a href="{{AppUrl}}/reports/monthly/{{Year}}/{{Month}}" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 14px;">
+        Ver reporte completo
+      </a>
+    </div>
+
+    <div style="margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center;">
+      © {{Year}} ManageMyMoney · Análisis que importa
+    </div>
+  </div>
+</body>
+</html>

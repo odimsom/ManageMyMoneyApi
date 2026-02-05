@@ -359,5 +359,22 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
+scripts/
+
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Sensitive files - DO NOT COMMIT
+appsettings.Development.json
+appsettings.Production.json
+*.pfx
+*.key
+
+# Local storage
+Storage/
+
+# Email templates (if contains sensitive data)
+# Email/Templates/
+
+# Migrations (optional - uncomment if you want to ignore)
+# **/Migrations/

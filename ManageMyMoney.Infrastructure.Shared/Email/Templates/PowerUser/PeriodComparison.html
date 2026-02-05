@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Comparativa de períodos</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: Arial, Helvetica, sans-serif; color: #e5e7eb;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #020617;">
+    <div style="background-color: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 28px;">
+      <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #f8fafc;">
+        📊 Comparativa: {{Period1Name}} vs {{Period2Name}}
+      </h1>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5;">
+        Hola {{UserName}}, aquí está tu análisis comparativo:
+      </p>
+
+      <!-- Comparación de ingresos -->
+      <div style="background-color: #1e293b; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #22c55e;">💰 Ingresos</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="text-align: center;">
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #94a3b8;">{{Period1Name}}</p>
+            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #f8fafc;">{{Period1Income}}</p>
+          </div>
+          <div style="text-align: center; padding: 0 16px;">
+            <p style="margin: 0; font-size: 24px; color: {{IncomeChangeColor}}; font-weight: bold;">{{IncomeChangeIcon}}</p>
+            <p style="margin: 0; font-size: 14px; color: {{IncomeChangeColor}};">{{IncomeChangePercentage}}%</p>
+          </div>
+          <div style="text-align: center;">
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #94a3b8;">{{Period2Name}}</p>
+            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #f8fafc;">{{Period2Income}}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparación de gastos -->
+      <div style="background-color: #1e293b; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #ef4444;">💸 Gastos</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="text-align: center;">
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #94a3b8;">{{Period1Name}}</p>
+            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #f8fafc;">{{Period1Expenses}}</p>
+          </div>
+          <div style="text-align: center; padding: 0 16px;">
+            <p style="margin: 0; font-size: 24px; color: {{ExpenseChangeColor}}; font-weight: bold;">{{ExpenseChangeIcon}}</p>
+            <p style="margin: 0; font-size: 14px; color: {{ExpenseChangeColor}};">{{ExpenseChangePercentage}}%</p>
+          </div>
+          <div style="text-align: center;">
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #94a3b8;">{{Period2Name}}</p>
+            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #f8fafc;">{{Period2Expenses}}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Balance neto -->
+      <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #93c5fd;">Cambio en balance neto</p>
+        <p style="margin: 0; font-size: 28px; font-weight: bold; color: {{BalanceChangeColor}};">{{BalanceChangeIcon}} {{BalanceChange}}</p>
+      </div>
+
+      <a href="{{AppUrl}}/reports/comparison" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 14px;">
+        Ver análisis detallado
+      </a>
+    </div>
+
+    <div style="margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center;">
+      © {{Year}} ManageMyMoney · Compara y mejora
+    </div>
+  </div>
+</body>
+</html>

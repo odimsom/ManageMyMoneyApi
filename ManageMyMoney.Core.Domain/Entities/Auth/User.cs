@@ -1,4 +1,6 @@
 using ManageMyMoney.Core.Domain.Common;
+using ManageMyMoney.Core.Domain.Entities.Accounts;
+using ManageMyMoney.Core.Domain.Entities.Expenses;
 using ManageMyMoney.Core.Domain.ValueObjects;
 
 namespace ManageMyMoney.Core.Domain.Entities.Auth;
@@ -11,20 +13,30 @@ public class User
     public string FirstName { get; private set; } = string.Empty;
     public string? LastName { get; private set; }
     public PhoneNumber? PhoneNumber { get; private set; }
+    public string? AvatarUrl { get; private set; }
     public string PreferredCurrency { get; private set; } = "USD";
     public string? TimeZone { get; private set; }
-    public string? AvatarUrl { get; private set; }
     public bool IsEmailVerified { get; private set; }
-    public bool IsActive { get; private set; }
     public bool IsTwoFactorEnabled { get; private set; }
-    public DateTime CreatedAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
+    public bool IsActive { get; private set; } = true;
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+
+    // Computed properties
+    public string FullName => string.IsNullOrWhiteSpace(LastName) ? FirstName : $"{FirstName} {LastName}";
+
+    // Navigation properties
+    public virtual ICollection<Account> Accounts { get; private set; } = new List<Account>();
+    public virtual ICollection<Expense> Expenses { get; private set; } = new List<Expense>();
+    public virtual ICollection<RefreshToken> RefreshTokens { get; private set; } = new List<RefreshToken>();
+    public virtual ICollection<UserSession> Sessions { get; private set; } = new List<UserSession>();
 
     private User() { }
 
     public static OperationResult<User> Create(
         string email,
-        string passwordHash,
+        string hashedPassword,
         string firstName,
         string? lastName = null,
         string preferredCurrency = "USD")
@@ -33,7 +45,7 @@ public class User
         if (emailResult.IsFailure)
             return OperationResult.Failure<User>(emailResult.Error);
 
-        var passwordResult = Password.Create(passwordHash);
+        var passwordResult = Password.CreateFromHash(hashedPassword);
         if (passwordResult.IsFailure)
             return OperationResult.Failure<User>(passwordResult.Error);
 
@@ -48,63 +60,85 @@ public class User
             Id = Guid.NewGuid(),
             Email = emailResult.Value!,
             PasswordHash = passwordResult.Value!,
-            FirstName = firstName.Trim(),
-            LastName = lastName?.Trim(),
-            PreferredCurrency = preferredCurrency.ToUpperInvariant(),
+            FirstName = firstName,
+            LastName = lastName,
+            PreferredCurrency = preferredCurrency,
             IsEmailVerified = false,
-            IsActive = true,
             IsTwoFactorEnabled = false,
+            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
         return OperationResult.Success(user);
     }
 
-    public OperationResult VerifyEmail()
-    {
-        if (IsEmailVerified)
-            return OperationResult.Failure("Email is already verified");
-
-        IsEmailVerified = true;
-        return OperationResult.Success();
-    }
-
-    public OperationResult UpdatePassword(string newPasswordHash)
-    {
-        var passwordResult = Password.Create(newPasswordHash);
-        if (passwordResult.IsFailure)
-            return OperationResult.Failure(passwordResult.Error);
-
-        PasswordHash = passwordResult.Value!;
-        return OperationResult.Success();
-    }
-
-    public OperationResult UpdateProfile(string firstName, string? lastName, string? timeZone)
+    public OperationResult UpdateProfile(string firstName, string? lastName = null, string? timeZone = null)
     {
         if (string.IsNullOrWhiteSpace(firstName))
             return OperationResult.Failure("First name is required");
 
-        FirstName = firstName.Trim();
-        LastName = lastName?.Trim();
+        FirstName = firstName;
+        LastName = lastName;
         TimeZone = timeZone;
+        UpdatedAt = DateTime.UtcNow;
         return OperationResult.Success();
     }
 
-    public void RecordLogin() => LastLoginAt = DateTime.UtcNow;
+    public OperationResult UpdateAvatar(string? avatarUrl)
+    {
+        AvatarUrl = avatarUrl;
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
+
+    public OperationResult UpdatePassword(string newHashedPassword)
+    {
+        var passwordResult = Password.CreateFromHash(newHashedPassword);
+        if (passwordResult.IsFailure)
+            return OperationResult.Failure(passwordResult.Error);
+
+        PasswordHash = passwordResult.Value!;
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
+
+    public OperationResult VerifyEmail()
+    {
+        IsEmailVerified = true;
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
+
+    public void RecordLogin()
+    {
+        LastLoginAt = DateTime.UtcNow;
+    }
 
     public OperationResult Deactivate()
     {
-        if (!IsActive)
-            return OperationResult.Failure("User is already inactive");
-
         IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
         return OperationResult.Success();
     }
 
-    public void EnableTwoFactor() => IsTwoFactorEnabled = true;
-    public void DisableTwoFactor() => IsTwoFactorEnabled = false;
+    public OperationResult Activate()
+    {
+        IsActive = true;
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
 
-    public string FullName => string.IsNullOrWhiteSpace(LastName) 
-        ? FirstName 
-        : $"{FirstName} {LastName}";
+    public OperationResult EnableTwoFactor()
+    {
+        IsTwoFactorEnabled = true;
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
+
+    public OperationResult DisableTwoFactor()
+    {
+        IsTwoFactorEnabled = false;
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
 }

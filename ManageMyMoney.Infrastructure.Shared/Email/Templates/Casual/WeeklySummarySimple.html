@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resumen de tu semana</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: Arial, Helvetica, sans-serif; color: #e5e7eb;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #020617;">
+    <div style="background-color: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 28px;">
+      <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #f8fafc;">
+        📅 Semana del {{WeekStart}} al {{WeekEnd}}
+      </h1>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5;">
+        Hola {{UserName}}, aquí tienes un vistazo rápido de tu semana:
+      </p>
+
+      <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #d1fae5;">Total de la semana</p>
+        <p style="margin: 0; font-size: 36px; font-weight: bold; color: #ffffff;">{{WeeklyTotal}}</p>
+        <p style="margin: 8px 0 0 0; font-size: 14px; color: #d1fae5;">en {{ExpenseCount}} gastos</p>
+      </div>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5;">
+        {{WeeklyMessage}}
+      </p>
+
+      <a href="{{AppUrl}}/dashboard" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background-color: #059669; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 14px;">
+        Ver más detalles
+      </a>
+    </div>
+
+    <div style="margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center;">
+      © {{Year}} ManageMyMoney · Simple y efectivo
+    </div>
+  </div>
+</body>
+</html>

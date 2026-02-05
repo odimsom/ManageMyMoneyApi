@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Proyección financiera</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: Arial, Helvetica, sans-serif; color: #e5e7eb;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #020617;">
+    <div style="background-color: #020617; border: 1px solid #1e293b; border-radius: 12px; padding: 28px;">
+      <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #f8fafc;">
+        📈 Tu proyección financiera
+      </h1>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5;">
+        Hola {{UserName}}, basándonos en tu historial, aquí está tu proyección para los próximos {{ProjectionMonths}} meses:
+      </p>
+
+      <!-- Proyección de gastos -->
+      <div style="background-color: #1e293b; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #f8fafc;">Gastos proyectados</h3>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #94a3b8;">Promedio mensual actual:</span>
+          <span style="color: #f8fafc; font-weight: bold;">{{CurrentMonthlyAverage}}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+          <span style="color: #94a3b8;">Tendencia:</span>
+          <span style="color: {{TrendColor}}; font-weight: bold;">{{TrendDirection}} {{TrendPercentage}}%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #94a3b8;">Proyección próximo mes:</span>
+          <span style="color: #f8fafc; font-weight: bold;">{{ProjectedNextMonth}}</span>
+        </div>
+      </div>
+
+      <!-- Proyección de ahorro -->
+      <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #ffffff;">Potencial de ahorro</h3>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #d1fae5;">Si mantienes tu ritmo actual:</p>
+        <p style="margin: 0; font-size: 28px; font-weight: bold; color: #ffffff;">{{ProjectedSavings}}</p>
+        <p style="margin: 8px 0 0 0; font-size: 14px; color: #d1fae5;">en los próximos {{ProjectionMonths}} meses</p>
+      </div>
+
+      <!-- Recomendaciones -->
+      <div style="background-color: #1e293b; border-left: 4px solid #8b5cf6; border-radius: 0 8px 8px 0; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold; color: #a78bfa;">💡 Recomendación</p>
+        <p style="margin: 0; font-size: 14px; color: #cbd5f5;">{{Recommendation}}</p>
+      </div>
+
+      <a href="{{AppUrl}}/reports/projection" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background-color: #8b5cf6; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 14px;">
+        Ver análisis completo
+      </a>
+    </div>
+
+    <div style="margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center;">
+      © {{Year}} ManageMyMoney · Planifica tu futuro
+    </div>
+  </div>
+</body>
+</html>

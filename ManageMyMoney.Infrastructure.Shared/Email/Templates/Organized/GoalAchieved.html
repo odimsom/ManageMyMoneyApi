@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>¡Meta alcanzada!</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: Arial, Helvetica, sans-serif; color: #e5e7eb;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 32px 20px; background-color: #020617;">
+    <div style="background-color: #020617; border: 1px solid #22c55e; border-radius: 12px; padding: 28px;">
+      <h1 style="margin: 0 0 16px 0; font-size: 28px; font-weight: bold; color: #22c55e; text-align: center;">
+        🎉 ¡FELICIDADES!
+      </h1>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5; text-align: center;">
+        {{UserName}}, lo lograste. Has alcanzado tu meta de ahorro.
+      </p>
+
+      <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); border-radius: 12px; padding: 32px; margin: 24px 0; text-align: center;">
+        <p style="margin: 0 0 8px 0; font-size: 16px; color: #d1fae5;">{{GoalName}}</p>
+        <p style="margin: 0; font-size: 42px; font-weight: bold; color: #ffffff;">{{TargetAmount}}</p>
+        <p style="margin: 12px 0 0 0; font-size: 14px; color: #d1fae5;">✓ Meta completada</p>
+      </div>
+
+      <div style="background-color: #1e293b; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #94a3b8;">Tu logro en números:</p>
+        <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+          <div style="text-align: center;">
+            <p style="margin: 0; font-size: 20px; font-weight: bold; color: #f8fafc;">{{DaysToComplete}}</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">días</p>
+          </div>
+          <div style="text-align: center;">
+            <p style="margin: 0; font-size: 20px; font-weight: bold; color: #f8fafc;">{{ContributionsCount}}</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">aportes</p>
+          </div>
+          <div style="text-align: center;">
+            <p style="margin: 0; font-size: 20px; font-weight: bold; color: #f8fafc;">{{AverageContribution}}</p>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">promedio</p>
+          </div>
+        </div>
+      </div>
+
+      <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 1.6; color: #cbd5f5; text-align: center;">
+        ¿Listo para tu siguiente meta? La disciplina que construiste te llevará lejos.
+      </p>
+
+      <div style="text-align: center;">
+        <a href="{{AppUrl}}/goals/new" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background-color: #22c55e; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 14px;">
+          Crear nueva meta
+        </a>
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; font-size: 12px; color: #94a3b8; text-align: center;">
+      © {{Year}} ManageMyMoney · Metas que se cumplen
+    </div>
+  </div>
+</body>
+</html>

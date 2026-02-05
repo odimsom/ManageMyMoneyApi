@@ -193,7 +193,12 @@ if ($stagedChanges) {
 # ============================================
 if ($Push) {
     Write-Step "Pushing to remote repository"
-    Execute-GitCommand "git push origin main"
+    
+    # Detectar rama actual automáticamente
+    $currentBranch = git rev-parse --abbrev-ref HEAD
+    Write-Host "Current branch: $currentBranch" -ForegroundColor Gray
+    
+    Execute-GitCommand "git push origin $currentBranch"
     Write-Host "Push completed successfully!" -ForegroundColor Green
 }
 
@@ -206,7 +211,8 @@ git log --oneline -5
 Write-Host "`nAll operations completed!" -ForegroundColor Green
 
 if (-not $Push) {
+    $currentBranch = git rev-parse --abbrev-ref HEAD
     Write-Host "`nTo push changes, run:" -ForegroundColor Yellow
-    Write-Host "  git push origin main" -ForegroundColor White
+    Write-Host "  git push origin $currentBranch" -ForegroundColor White
     Write-Host "Or re-run this script with -Push flag" -ForegroundColor White
 }

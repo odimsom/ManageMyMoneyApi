@@ -1,4 +1,6 @@
 using ManageMyMoney.Core.Domain.Common;
+using ManageMyMoney.Core.Domain.Entities.Auth;
+using ManageMyMoney.Core.Domain.Entities.Expenses;
 using ManageMyMoney.Core.Domain.Enums;
 using ManageMyMoney.Core.Domain.ValueObjects;
 
@@ -10,15 +12,20 @@ public class Account
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
     public AccountType Type { get; private set; }
-    public Money Balance { get; private set; } = Money.Zero();
+    public Money Balance { get; private set; } = null!;
     public string Currency { get; private set; } = "USD";
     public string? Icon { get; private set; }
     public string? Color { get; private set; }
+    public bool IncludeInTotal { get; private set; } = true;
     public Guid UserId { get; private set; }
-    public bool IsActive { get; private set; }
-    public bool IncludeInTotal { get; private set; }
+    public bool IsActive { get; private set; } = true;
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+
+    // Navigation properties
+    public virtual User User { get; private set; } = null!;
+    public virtual ICollection<Expense> Expenses { get; private set; } = new List<Expense>();
+    public virtual CreditCard? CreditCard { get; private set; }
 
     private Account() { }
 
@@ -46,16 +53,16 @@ public class Account
         var account = new Account
         {
             Id = Guid.NewGuid(),
-            Name = name.Trim(),
-            Description = description?.Trim(),
+            Name = name,
+            Description = description,
             Type = type,
             Balance = balanceResult.Value!,
-            Currency = currency.ToUpperInvariant(),
+            Currency = currency,
             Icon = icon,
             Color = color,
+            IncludeInTotal = includeInTotal,
             UserId = userId,
             IsActive = true,
-            IncludeInTotal = includeInTotal,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -64,56 +71,61 @@ public class Account
 
     public OperationResult Credit(Money amount)
     {
-        if (amount.Currency != Currency)
+        if (amount.Currency != Balance.Currency)
             return OperationResult.Failure("Currency mismatch");
 
-        var result = Balance.Add(amount);
-        if (result.IsFailure)
-            return result;
+        var newBalanceResult = Money.Create(Balance.Amount + amount.Amount, Balance.Currency);
+        if (newBalanceResult.IsFailure)
+            return OperationResult.Failure(newBalanceResult.Error);
 
-        Balance = result.Value!;
+        Balance = newBalanceResult.Value!;
         UpdatedAt = DateTime.UtcNow;
         return OperationResult.Success();
     }
 
     public OperationResult Debit(Money amount)
     {
-        if (amount.Currency != Currency)
+        if (amount.Currency != Balance.Currency)
             return OperationResult.Failure("Currency mismatch");
 
-        var result = Balance.Subtract(amount);
-        if (result.IsFailure)
-            return result;
+        var newBalanceResult = Money.Create(Balance.Amount - amount.Amount, Balance.Currency);
+        if (newBalanceResult.IsFailure)
+            return OperationResult.Failure(newBalanceResult.Error);
 
-        Balance = result.Value!;
+        Balance = newBalanceResult.Value!;
         UpdatedAt = DateTime.UtcNow;
         return OperationResult.Success();
     }
 
-    public OperationResult UpdateName(string newName)
+    public OperationResult UpdateDetails(string? name = null, string? description = null, string? icon = null, string? color = null, bool? includeInTotal = null)
     {
-        if (string.IsNullOrWhiteSpace(newName))
-            return OperationResult.Failure("Account name is required");
+        if (name != null)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return OperationResult.Failure("Account name cannot be empty");
+            Name = name;
+        }
 
-        Name = newName.Trim();
+        if (description != null) Description = description;
+        if (icon != null) Icon = icon;
+        if (color != null) Color = color;
+        if (includeInTotal.HasValue) IncludeInTotal = includeInTotal.Value;
+
         UpdatedAt = DateTime.UtcNow;
         return OperationResult.Success();
     }
 
     public OperationResult Deactivate()
     {
-        if (!IsActive)
-            return OperationResult.Failure("Account is already inactive");
-
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
         return OperationResult.Success();
     }
 
-    public void UpdateAppearance(string? icon, string? color)
+    public OperationResult Activate()
     {
-        Icon = icon;
-        Color = color;
+        IsActive = true;
         UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
     }
 }

@@ -7,7 +7,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!-- Authentication -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+    
+    <!-- EF Core Design (required for migrations) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    
+    <!-- OpenAPI/Swagger -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ManageMyMoney.Core.Application\ManageMyMoney.Core.Application.csproj" />
+    <ProjectReference Include="..\ManageMyMoney.Infrastructure.Persistence\ManageMyMoney.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\ManageMyMoney.Infrastructure.Shared\ManageMyMoney.Infrastructure.Shared.csproj" />
   </ItemGroup>
 
 </Project>
