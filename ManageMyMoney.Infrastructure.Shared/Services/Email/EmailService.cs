@@ -53,10 +53,11 @@ public class EmailService : IEmailService
         if (!_isConfigured)
         {
             _logger.LogWarning("📧 Email not sent to {Recipient} (subject: {Subject}) - SMTP not configured", to, subject);
-            // Return success to not block user registration, but log the issue
             return OperationResult.Success();
         }
 
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        
         try
         {
             _logger.LogInformation("📤 Attempting to send email to {Recipient}: {Subject}", to, subject);
@@ -69,18 +70,29 @@ public class EmailService : IEmailService
             using var message = CreateMailMessage(to, subject, body);
             _logger.LogInformation("   Mail message created, sending...");
             
-            await client.SendMailAsync(message);
+            var sendTask = client.SendMailAsync(message);
+            var completedTask = await Task.WhenAny(sendTask, Task.Delay(15000, cts.Token));
             
-            _logger.LogInformation("✅ Email sent successfully to {Recipient}: {Subject}", to, subject);
-            return OperationResult.Success();
+            if (completedTask == sendTask)
+            {
+                await sendTask; // Propagate any exceptions
+                _logger.LogInformation("✅ Email sent successfully to {Recipient}: {Subject}", to, subject);
+                return OperationResult.Success();
+            }
+            else
+            {
+                _logger.LogError("⏱️ Email send TIMEOUT after 15 seconds to {Recipient}. " +
+                    "Possible issues: 1) SendGrid API Key lacks permissions, 2) FROM email not verified, " +
+                    "3) Network throttling. Check SendGrid Activity Feed for more details.", to);
+                return OperationResult.Success();
+            }
         }
         catch (SmtpException ex)
         {
             _logger.LogError(ex, "❌ SMTP error sending email to {Recipient}. Status: {Status}, Code: {Code}. " +
-                "Check: 1) SendGrid API Key is correct, 2) API Key has Mail Send permissions, 3) Network connectivity. " +
+                "Check: 1) SendGrid API Key is correct, 2) API Key has Mail Send permissions, 3) FROM email is verified. " +
                 "InnerException: {InnerException}",
                 to, ex.StatusCode, ex.Message, ex.InnerException?.Message ?? "none");
-            // Return success to not block user flow, but log the error
             return OperationResult.Success();
         }
         catch (System.Net.Sockets.SocketException ex)
@@ -89,6 +101,11 @@ public class EmailService : IEmailService
                 "Check: 1) SMTP_SERVER and SMTP_PORT are correct, 2) Railway can reach smtp.sendgrid.net:587. " +
                 "Error Code: {ErrorCode}",
                 _settings.SmtpServer, _settings.SmtpPort, ex.SocketErrorCode);
+            return OperationResult.Success();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogError("⏱️ Email send operation CANCELLED/TIMEOUT to {Recipient}", to);
             return OperationResult.Success();
         }
         catch (Exception ex)
