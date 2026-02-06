@@ -11,4 +11,13 @@ public interface IUserRepository
     Task<OperationResult> UpdateAsync(User user);
     Task<OperationResult> DeleteAsync(Guid id);
     Task<OperationResult<bool>> EmailExistsAsync(string email);
+
+    // Token management
+    Task<OperationResult> AddPasswordResetTokenAsync(PasswordResetToken token);
+    Task<OperationResult<PasswordResetToken>> GetValidPasswordResetTokenAsync(string token);
+    Task<OperationResult> UpdatePasswordResetTokenAsync(PasswordResetToken token);
+    
+    Task<OperationResult> AddEmailVerificationTokenAsync(EmailVerificationToken token);
+    Task<OperationResult<EmailVerificationToken>> GetValidEmailVerificationTokenAsync(string token);
+    Task<OperationResult> UpdateEmailVerificationTokenAsync(EmailVerificationToken token);
 }

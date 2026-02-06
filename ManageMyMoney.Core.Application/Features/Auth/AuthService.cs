@@ -57,8 +57,18 @@ public class AuthService : IAuthService
 
         var user = userResult.Value!;
 
-        // Send verification email with timeout (non-blocking after 3 seconds)
+        // Create and save verification token
         var verificationCode = _tokenService.GenerateRandomToken(6);
+        var tokenResult = EmailVerificationToken.Create(verificationCode, user.Id, 48); // 48 hours expiration
+        if (tokenResult.IsFailure)
+            return OperationResult.Failure<AuthResponse>(tokenResult.Error);
+
+        var verificationToken = tokenResult.Value!;
+        var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(verificationToken);
+        if (saveTokenResult.IsFailure)
+            _logger.LogWarning("Failed to save email verification token for {Email}: {Error}", request.Email, saveTokenResult.Error);
+
+        // Send verification email with timeout (non-blocking after 3 seconds)
         var verificationUrl = $"https://app.managemymoney.com/verify-email?code={verificationCode}";
         
         // Try to send email with 3-second timeout, then continue regardless
@@ -72,7 +82,7 @@ public class AuthService : IAuthService
                     request.FirstName,
                     verificationCode,
                     verificationUrl,
-                    60); // 60 minutes expiration
+                    60); // 60 minutes expiration for email link display
                 
                 if (result.IsSuccess)
                 {
@@ -140,13 +150,11 @@ public class AuthService : IAuthService
 
     public async Task<OperationResult<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)
     {
-        // Simplified - would need RefreshToken repository
         return await Task.FromResult(OperationResult.Failure<AuthResponse>("Refresh token validation not implemented"));
     }
 
     public Task<OperationResult> LogoutAsync(string refreshToken)
     {
-        // Revoke refresh token
         return Task.FromResult(OperationResult.Success());
     }
 
@@ -182,13 +190,23 @@ public class AuthService : IAuthService
         var userResult = await _userRepository.GetByEmailAsync(request.Email);
         if (userResult.IsFailure)
         {
-            // Don't reveal if email exists - always return success
             return OperationResult.Success();
         }
 
         var user = userResult.Value!;
-        var resetToken = _tokenService.GenerateRandomToken();
-        var resetUrl = $"https://app.managemymoney.com/reset-password?token={resetToken}";
+        var resetTokenValue = _tokenService.GenerateRandomToken();
+
+        var tokenResult = PasswordResetToken.Create(resetTokenValue, user.Id, 24);
+        if (tokenResult.IsFailure)
+            return OperationResult.Failure(tokenResult.Error);
+
+        var resetToken = tokenResult.Value!;
+        
+        var saveTokenResult = await _userRepository.AddPasswordResetTokenAsync(resetToken);
+        if (saveTokenResult.IsFailure)
+            return OperationResult.Failure("Failed to create reset token");
+
+        var resetUrl = $"https://app.managemymoney.com/reset-password?token={resetTokenValue}";
 
         // Send password reset email in background (non-blocking)
         _ = Task.Run(async () =>
@@ -199,7 +217,7 @@ public class AuthService : IAuthService
                     request.Email,
                     user.FirstName,
                     resetUrl,
-                    60); // 60 minutes expiration
+                    60); // 60 minutes expiration for email link display
             }
             catch (Exception ex)
             {
@@ -210,21 +228,160 @@ public class AuthService : IAuthService
         return OperationResult.Success();
     }
 
-    public Task<OperationResult> ResetPasswordAsync(ResetPasswordRequest request)
+    public async Task<OperationResult> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        // Validate token and reset password
-        return Task.FromResult(OperationResult.Success());
+        if (string.IsNullOrWhiteSpace(request.Token))
+            return OperationResult.Failure("Reset token is required");
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+            return OperationResult.Failure("New password is required");
+
+        // Validate password requirements
+        var passwordValidation = Domain.ValueObjects.Password.ValidateRawPassword(request.NewPassword);
+        if (passwordValidation.IsFailure)
+            return passwordValidation;
+
+        // Get and validate reset token
+        var tokenResult = await _userRepository.GetValidPasswordResetTokenAsync(request.Token);
+        if (tokenResult.IsFailure)
+            return OperationResult.Failure("Invalid or expired reset token");
+
+        var resetToken = tokenResult.Value!;
+
+        // Get user
+        var userResult = await _userRepository.GetByIdAsync(resetToken.UserId);
+        if (userResult.IsFailure)
+            return OperationResult.Failure("User not found");
+
+        var user = userResult.Value!;
+
+        // Mark token as used
+        var markTokenResult = resetToken.MarkAsUsed();
+        if (markTokenResult.IsFailure)
+            return markTokenResult;
+
+        await _userRepository.UpdatePasswordResetTokenAsync(resetToken);
+
+        // Update password
+        var newHashedPassword = _passwordHasher.HashPassword(request.NewPassword);
+        var updateResult = user.UpdatePassword(newHashedPassword);
+        if (updateResult.IsFailure)
+            return updateResult;
+
+        await _userRepository.UpdateAsync(user);
+
+        _logger.LogInformation("Password reset completed for user: {UserId}", user.Id);
+
+        return OperationResult.Success();
     }
 
     public async Task<OperationResult> VerifyEmailAsync(VerifyEmailRequest request)
     {
-        // Validate token and verify email
-        return await Task.FromResult(OperationResult.Success());
+        if (string.IsNullOrWhiteSpace(request.Token))
+            return OperationResult.Failure("Verification token is required");
+
+        // Get and validate verification token
+        var tokenResult = await _userRepository.GetValidEmailVerificationTokenAsync(request.Token);
+        if (tokenResult.IsFailure)
+            return OperationResult.Failure("Invalid or expired verification token");
+
+        var verificationToken = tokenResult.Value!;
+
+        // Get user
+        var userResult = await _userRepository.GetByIdAsync(verificationToken.UserId);
+        if (userResult.IsFailure)
+            return OperationResult.Failure("User not found");
+
+        var user = userResult.Value!;
+
+        // Check if email is already verified
+        if (user.IsEmailVerified)
+            return OperationResult.Failure("Email is already verified");
+
+        // Mark token as used
+        var markTokenResult = verificationToken.MarkAsUsed();
+        if (markTokenResult.IsFailure)
+            return markTokenResult;
+
+        await _userRepository.UpdateEmailVerificationTokenAsync(verificationToken);
+
+        // Verify email
+        var verifyResult = user.VerifyEmail();
+        if (verifyResult.IsFailure)
+            return verifyResult;
+
+        await _userRepository.UpdateAsync(user);
+
+        _logger.LogInformation("Email verified successfully for user: {UserId}", user.Id);
+
+        return OperationResult.Success();
     }
 
-    public Task<OperationResult> ResendVerificationEmailAsync(Guid userId)
+    public async Task<OperationResult> ResendVerificationEmailAsync(Guid userId)
     {
-        return Task.FromResult(OperationResult.Success());
+        if (userId == Guid.Empty)
+            return OperationResult.Failure("User ID is required");
+
+        // Get user
+        var userResult = await _userRepository.GetByIdAsync(userId);
+        if (userResult.IsFailure)
+            return OperationResult.Failure("User not found");
+
+        var user = userResult.Value!;
+
+        // Check if email is already verified
+        if (user.IsEmailVerified)
+            return OperationResult.Failure("Email is already verified");
+
+        // Generate new verification token
+        var verificationCode = _tokenService.GenerateRandomToken(6);
+        var tokenResult = EmailVerificationToken.Create(verificationCode, user.Id, 48); // 48 hours expiration
+        if (tokenResult.IsFailure)
+            return OperationResult.Failure(tokenResult.Error);
+
+        var verificationToken = tokenResult.Value!;
+        
+        // Save token to database
+        var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(verificationToken);
+        if (saveTokenResult.IsFailure)
+            return OperationResult.Failure("Failed to create verification token");
+
+        // Send verification email (non-blocking with timeout)
+        var verificationUrl = $"https://app.managemymoney.com/verify-email?code={verificationCode}";
+        
+        var emailTask = Task.Run(async () =>
+        {
+            try
+            {
+                _logger.LogInformation("🔄 Resending email verification for {Email}", user.Email.Value);
+                var result = await _emailService.SendEmailVerificationAsync(
+                    user.Email.Value,
+                    user.FirstName,
+                    verificationCode,
+                    verificationUrl,
+                    60); // 60 minutes for email link display
+                
+                if (result.IsSuccess)
+                {
+                    _logger.LogInformation("✅ Verification email resent successfully to {Email}", user.Email.Value);
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ Failed to resend verification email to {Email}: {Error}", user.Email.Value, result.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Exception resending verification email to {Email}", user.Email.Value);
+            }
+        });
+
+        // Wait up to 3 seconds for email, then continue
+        _ = Task.WhenAny(emailTask, Task.Delay(3000));
+
+        _logger.LogInformation("Verification email resend initiated for user: {UserId}", userId);
+
+        return OperationResult.Success();
     }
 
     public async Task<OperationResult<UserDto>> GetCurrentUserAsync(Guid userId)

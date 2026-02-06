@@ -62,4 +62,94 @@ public class UserRepository : GenericRepository<User>, IUserRepository
             return OperationResult.Failure($"Error deleting user: {ex.Message}");
         }
     }
+
+    public async Task<OperationResult> AddPasswordResetTokenAsync(PasswordResetToken token)
+    {
+        try
+        {
+            Context.PasswordResetTokens.Add(token);
+            await Context.SaveChangesAsync();
+            return OperationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure($"Error adding password reset token: {ex.Message}");
+        }
+    }
+
+    public async Task<OperationResult<PasswordResetToken>> GetValidPasswordResetTokenAsync(string token)
+    {
+        try
+        {
+            var resetToken = await Context.PasswordResetTokens
+                .FirstOrDefaultAsync(t => t.Token == token && !t.IsUsed && t.ExpiresAt > DateTime.UtcNow);
+
+            return resetToken is not null
+                ? OperationResult.Success(resetToken)
+                : OperationResult.Failure<PasswordResetToken>("Invalid or expired token");
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure<PasswordResetToken>($"Error retrieving token: {ex.Message}");
+        }
+    }
+
+    public async Task<OperationResult> UpdatePasswordResetTokenAsync(PasswordResetToken token)
+    {
+        try
+        {
+            Context.PasswordResetTokens.Update(token);
+            await Context.SaveChangesAsync();
+            return OperationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure($"Error updating password reset token: {ex.Message}");
+        }
+    }
+
+    public async Task<OperationResult> AddEmailVerificationTokenAsync(EmailVerificationToken token)
+    {
+        try
+        {
+            Context.EmailVerificationTokens.Add(token);
+            await Context.SaveChangesAsync();
+            return OperationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure($"Error adding email verification token: {ex.Message}");
+        }
+    }
+
+    public async Task<OperationResult<EmailVerificationToken>> GetValidEmailVerificationTokenAsync(string token)
+    {
+        try
+        {
+            var verificationToken = await Context.EmailVerificationTokens
+                .FirstOrDefaultAsync(t => t.Token == token && !t.IsUsed && t.ExpiresAt > DateTime.UtcNow);
+
+            return verificationToken is not null
+                ? OperationResult.Success(verificationToken)
+                : OperationResult.Failure<EmailVerificationToken>("Invalid or expired verification token");
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure<EmailVerificationToken>($"Error retrieving verification token: {ex.Message}");
+        }
+    }
+
+    public async Task<OperationResult> UpdateEmailVerificationTokenAsync(EmailVerificationToken token)
+    {
+        try
+        {
+            Context.EmailVerificationTokens.Update(token);
+            await Context.SaveChangesAsync();
+            return OperationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return OperationResult.Failure($"Error updating email verification token: {ex.Message}");
+        }
+    }
 }
