@@ -148,6 +148,7 @@ var app = builder.Build();
 
 // Verificar si se deben ejecutar las migraciones automáticamente
 var runMigrations = Environment.GetEnvironmentVariable("RUN_MIGRATIONS")?.ToLowerInvariant() == "true";
+var recreateDatabase = Environment.GetEnvironmentVariable("RECREATE_DATABASE")?.ToLowerInvariant() == "true";
 
 if (runMigrations)
 {
@@ -158,17 +159,87 @@ if (runMigrations)
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         try
         {
-            logger.LogInformation("Applying database migrations...");
-            context.Database.Migrate();
-            logger.LogInformation("Database migrations applied successfully");
-            
-            logger.LogInformation("Seeding currencies...");
-            await CurrencySeed.SeedAsync(context);
-            logger.LogInformation("Currency seeding completed");
+            logger.LogInformation("Checking database connection...");
+            var canConnect = await context.Database.CanConnectAsync();
+            logger.LogInformation("Database connection: {CanConnect}", canConnect);
+
+            if (canConnect)
+            {
+                if (recreateDatabase)
+                {
+                    logger.LogWarning("RECREATE_DATABASE=true - Dropping and recreating database...");
+                    try
+                    {
+                        await context.Database.EnsureDeletedAsync();
+                        logger.LogInformation("Database dropped successfully");
+                        await context.Database.EnsureCreatedAsync();
+                        logger.LogInformation("Database recreated successfully");
+                    }
+                    catch (Exception recreateEx)
+                    {
+                        logger.LogError(recreateEx, "Error recreating database");
+                        throw;
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("Checking pending migrations...");
+                    var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+                    logger.LogInformation("Pending migrations: {Count}", pendingMigrations.Count());
+
+                    if (pendingMigrations.Any())
+                    {
+                        logger.LogInformation("Applying database migrations...");
+                        try
+                        {
+                            context.Database.Migrate();
+                            logger.LogInformation("Database migrations applied successfully");
+                        }
+                        catch (Exception migrationEx)
+                        {
+                            logger.LogError(migrationEx, "Error applying migrations - attempting to ensure database is created");
+                            
+                            try
+                            {
+                                // Try to ensure database is created first
+                                await context.Database.EnsureCreatedAsync();
+                                logger.LogInformation("Database ensured created");
+                            }
+                            catch (Exception createEx)
+                            {
+                                logger.LogError(createEx, "Error creating database - checking if it already exists with different schema");
+                                
+                                // If database exists but has wrong schema, log the issue but continue
+                                logger.LogWarning("Database appears to exist but with incompatible schema. Manual intervention may be required.");
+                                logger.LogWarning("Consider dropping and recreating the database in Railway dashboard.");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        logger.LogInformation("No pending migrations found");
+                    }
+                }
+
+                logger.LogInformation("Seeding currencies...");
+                try
+                {
+                    await CurrencySeed.SeedAsync(context);
+                    logger.LogInformation("Currency seeding completed");
+                }
+                catch (Exception seedEx)
+                {
+                    logger.LogError(seedEx, "Error seeding currencies - continuing startup");
+                }
+            }
+            else
+            {
+                logger.LogError("Cannot connect to database");
+            }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error applying migrations");
+            logger.LogError(ex, "Error in database initialization - continuing startup");
         }
     }
 }
