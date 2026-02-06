@@ -80,6 +80,8 @@ public class ExpenseEntityConfiguration : IEntityTypeConfiguration<Expense>
                 .HasColumnName("currency")
                 .HasMaxLength(3)
                 .IsRequired();
+
+            amount.WithOwner().HasForeignKey("Id");
         });
 
         builder.HasOne(e => e.Category)

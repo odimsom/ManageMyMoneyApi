@@ -25,6 +25,8 @@ public class UserEntityConfiguration : IEntityTypeConfiguration<User>
             email.HasIndex(e => e.Value)
                 .IsUnique()
                 .HasDatabaseName("ix_users_email");
+
+            email.WithOwner().HasForeignKey("Id");
         });
 
         builder.OwnsOne(u => u.PasswordHash, password =>
@@ -33,6 +35,8 @@ public class UserEntityConfiguration : IEntityTypeConfiguration<User>
                 .HasColumnName("password_hash")
                 .IsRequired()
                 .HasMaxLength(500);
+
+            password.WithOwner().HasForeignKey("Id");
         });
 
         builder.OwnsOne(u => u.PhoneNumber, phone =>
@@ -44,6 +48,8 @@ public class UserEntityConfiguration : IEntityTypeConfiguration<User>
             phone.Property(p => p.CountryCode)
                 .HasColumnName("phone_country_code")
                 .HasMaxLength(5);
+
+            phone.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(u => u.FirstName)

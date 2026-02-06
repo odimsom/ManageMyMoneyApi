@@ -32,6 +32,8 @@ public class AccountTransactionEntityConfiguration : IEntityTypeConfiguration<Ac
                 .HasColumnName("currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(t => t.Description)

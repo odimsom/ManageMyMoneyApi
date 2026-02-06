@@ -28,6 +28,8 @@ public class TaxRateEntityConfiguration : IEntityTypeConfiguration<TaxRate>
                 .HasColumnName("rate")
                 .IsRequired()
                 .HasColumnType("decimal(5,2)");
+
+            pct.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(t => t.CountryCode)

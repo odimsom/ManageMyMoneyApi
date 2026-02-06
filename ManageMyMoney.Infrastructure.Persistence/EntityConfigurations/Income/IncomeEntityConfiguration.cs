@@ -26,6 +26,8 @@ public class IncomeEntityConfiguration : IEntityTypeConfiguration<Core.Domain.En
                 .HasColumnName("currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(i => i.Description)

@@ -30,6 +30,8 @@ public class RecurringExpenseEntityConfiguration : IEntityTypeConfiguration<Recu
                 .HasColumnName("currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(r => r.Description)

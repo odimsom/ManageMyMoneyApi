@@ -33,6 +33,8 @@ public class SavingsGoalEntityConfiguration : IEntityTypeConfiguration<SavingsGo
                 .HasColumnName("target_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.OwnsOne(g => g.CurrentAmount, money =>
@@ -46,6 +48,8 @@ public class SavingsGoalEntityConfiguration : IEntityTypeConfiguration<SavingsGo
                 .HasColumnName("current_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(g => g.TargetDate);

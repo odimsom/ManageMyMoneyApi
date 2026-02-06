@@ -32,6 +32,8 @@ public class CategoryBudgetEntityConfiguration : IEntityTypeConfiguration<Catego
                 .HasColumnName("limit_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.OwnsOne(b => b.Spent, money =>
@@ -45,6 +47,8 @@ public class CategoryBudgetEntityConfiguration : IEntityTypeConfiguration<Catego
                 .HasColumnName("spent_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(b => b.Period)
@@ -61,6 +65,8 @@ public class CategoryBudgetEntityConfiguration : IEntityTypeConfiguration<Catego
             range.Property(r => r.EndDate)
                 .HasColumnName("end_date")
                 .IsRequired();
+
+            range.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(b => b.AlertEnabled)
@@ -71,6 +77,8 @@ public class CategoryBudgetEntityConfiguration : IEntityTypeConfiguration<Catego
             pct.Property(p => p.Value)
                 .HasColumnName("alert_threshold")
                 .HasColumnType("decimal(5,2)");
+
+            pct.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(b => b.CreatedAt)

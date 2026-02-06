@@ -29,6 +29,8 @@ public class GoalContributionEntityConfiguration : IEntityTypeConfiguration<Goal
                 .HasColumnName("currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(c => c.Notes)

@@ -33,6 +33,8 @@ public class BudgetEntityConfiguration : IEntityTypeConfiguration<Budget>
                 .HasColumnName("limit_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.OwnsOne(b => b.Spent, money =>
@@ -46,6 +48,8 @@ public class BudgetEntityConfiguration : IEntityTypeConfiguration<Budget>
                 .HasColumnName("spent_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(b => b.Period)
@@ -62,6 +66,8 @@ public class BudgetEntityConfiguration : IEntityTypeConfiguration<Budget>
             range.Property(r => r.EndDate)
                 .HasColumnName("end_date")
                 .IsRequired();
+
+            range.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(b => b.UserId)

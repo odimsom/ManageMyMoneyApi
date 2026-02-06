@@ -32,6 +32,8 @@ public class ExpenseSplitEntityConfiguration : IEntityTypeConfiguration<ExpenseS
                 .HasColumnName("currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.OwnsOne(s => s.Percentage, pct =>
@@ -39,6 +41,8 @@ public class ExpenseSplitEntityConfiguration : IEntityTypeConfiguration<ExpenseS
             pct.Property(p => p.Value)
                 .HasColumnName("percentage")
                 .HasColumnType("decimal(5,2)");
+
+            pct.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(s => s.IsPaid)

@@ -38,6 +38,9 @@ public class AccountEntityConfiguration : IEntityTypeConfiguration<Account>
                 .HasColumnName("balance_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            // Ensure owned entity shares the same table and primary key
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(a => a.Currency)

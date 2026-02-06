@@ -29,6 +29,8 @@ public class CreditCardEntityConfiguration : IEntityTypeConfiguration<CreditCard
                 .HasColumnName("credit_limit_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.OwnsOne(c => c.CurrentBalance, money =>
@@ -42,6 +44,8 @@ public class CreditCardEntityConfiguration : IEntityTypeConfiguration<CreditCard
                 .HasColumnName("current_balance_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+
+            money.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(c => c.StatementClosingDay)
@@ -55,6 +59,8 @@ public class CreditCardEntityConfiguration : IEntityTypeConfiguration<CreditCard
             pct.Property(p => p.Value)
                 .HasColumnName("interest_rate")
                 .HasColumnType("decimal(5,2)");
+
+            pct.WithOwner().HasForeignKey("Id");
         });
 
         builder.Property(c => c.CreatedAt)
