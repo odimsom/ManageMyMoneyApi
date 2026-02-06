@@ -90,16 +90,22 @@ public class ManageMyMoneyContext : DbContext
                 entity.SetTableName(ToSnakeCase(entity.GetTableName() ?? entity.ClrType.Name));
             }
 
-            // Column names
+            // Column names - only for owned entities if explicitly configured
             foreach (var property in entity.GetProperties())
             {
-                property.SetColumnName(ToSnakeCase(property.Name));
+                if (!entity.IsOwned() || property.GetColumnName() != property.Name)
+                {
+                    property.SetColumnName(ToSnakeCase(property.GetColumnName() ?? property.Name));
+                }
             }
 
-            // Foreign keys
-            foreach (var foreignKey in entity.GetForeignKeys())
+            // Foreign keys - skip owned entities to avoid conflicts
+            if (!entity.IsOwned())
             {
-                foreignKey.SetConstraintName(ToSnakeCase(foreignKey.GetConstraintName() ?? ""));
+                foreach (var foreignKey in entity.GetForeignKeys())
+                {
+                    foreignKey.SetConstraintName(ToSnakeCase(foreignKey.GetConstraintName() ?? ""));
+                }
             }
 
             // Indexes
