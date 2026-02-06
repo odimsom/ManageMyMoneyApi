@@ -5,6 +5,8 @@ using ManageMyMoney.Core.Domain.Common;
 using ManageMyMoney.Infrastructure.Shared.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SendGrid;
+using SendGrid.Helpers.Mail;
 
 namespace ManageMyMoney.Infrastructure.Shared.Services.Email;
 
@@ -29,10 +31,38 @@ public class EmailService : IEmailService
     {
         try
         {
-            using var client = CreateSmtpClient();
+            // Prefer SendGrid API if API Key is configured and Server implies SendGrid
+            // Note: In DependencyInjection, we map SENDGRID_API_KEY to _settings.Password
+            bool useSendGrid = _settings.SmtpServer.Contains("sendgrid", StringComparison.OrdinalIgnoreCase) 
+                               && !string.IsNullOrEmpty(_settings.Password)
+                               && !_settings.Password.StartsWith("SG."); // Basic check, but key might not start with SG in all cases (though usually does)
+            
+            // Actually, let's just use SendGridClient if the key looks like a key or if SmtpServer says so
+            if (_settings.SmtpServer.Contains("sendgrid", StringComparison.OrdinalIgnoreCase))
+            {
+                 var client = new SendGridClient(_settings.Password);
+                 var from = new EmailAddress(_settings.SenderEmail, _settings.SenderName);
+                 var toAddress = new EmailAddress(to);
+                 var msg = MailHelper.CreateSingleEmail(from, toAddress, subject, null, body);
+                 
+                 var response = await client.SendEmailAsync(msg);
+                 
+                 if (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Accepted)
+                 {
+                     _logger.LogInformation("Email sent successfully to {Recipient} via SendGrid API", to);
+                     return OperationResult.Success();
+                 }
+                 
+                 var responseBody = await response.Body.ReadAsStringAsync();
+                 _logger.LogError("SendGrid API Error. Status: {Status}, Body: {Body}", response.StatusCode, responseBody);
+                 return OperationResult.Failure($"SendGrid API Error: {response.StatusCode}");
+            }
+            
+            // Fallback to SMTP
+            using var clientSmtp = CreateSmtpClient();
             using var message = CreateMailMessage(to, subject, body);
-            await client.SendMailAsync(message);
-            _logger.LogInformation("Email sent successfully to {Recipient}", to);
+            await clientSmtp.SendMailAsync(message);
+            _logger.LogInformation("Email sent successfully to {Recipient} via SMTP", to);
             return OperationResult.Success();
         }
         catch (SmtpException ex)
