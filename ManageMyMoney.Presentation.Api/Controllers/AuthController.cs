@@ -88,9 +88,9 @@ public class AuthController : BaseApiController
     [HttpPost("resend-verification")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ResendVerification()
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationEmailRequest request)
     {
-        var result = await _authService.ResendVerificationEmailAsync(CurrentUserId);
+        var result = await _authService.ResendVerificationEmailAsync(CurrentUserId, request.VerificationUrl);
         return HandleResult(result, "Verification email sent");
     }
 

@@ -69,7 +69,7 @@ public class AuthService : IAuthService
             _logger.LogWarning("Failed to save email verification token for {Email}: {Error}", request.Email, saveTokenResult.Error);
 
         // Send verification email with timeout (non-blocking after 3 seconds)
-        var verificationUrl = $"https://app.managemymoney.com/verify-email?code={verificationCode}";
+        var verificationUrl = $"{request.VerificationUrl}?code={verificationCode}";
         
         // Try to send email with 3-second timeout, then continue regardless
         var emailTask = Task.Run(async () =>
@@ -317,7 +317,7 @@ public class AuthService : IAuthService
         return OperationResult.Success();
     }
 
-    public async Task<OperationResult> ResendVerificationEmailAsync(Guid userId)
+    public async Task<OperationResult> ResendVerificationEmailAsync(Guid userId, string verificationUrl)
     {
         if (userId == Guid.Empty)
             return OperationResult.Failure("User ID is required");
@@ -347,7 +347,7 @@ public class AuthService : IAuthService
             return OperationResult.Failure("Failed to create verification token");
 
         // Send verification email (non-blocking with timeout)
-        var verificationUrl = $"https://app.managemymoney.com/verify-email?code={verificationCode}";
+        var verificationUrlWithCode = $"{verificationUrl}?code={verificationCode}";
         
         var emailTask = Task.Run(async () =>
         {
@@ -358,7 +358,7 @@ public class AuthService : IAuthService
                     user.Email.Value,
                     user.FirstName,
                     verificationCode,
-                    verificationUrl,
+                    verificationUrlWithCode,
                     60); // 60 minutes for email link display
                 
                 if (result.IsSuccess)

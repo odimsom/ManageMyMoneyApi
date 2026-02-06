@@ -13,7 +13,7 @@ public interface IAuthService
     Task<OperationResult> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<OperationResult> ResetPasswordAsync(ResetPasswordRequest request);
     Task<OperationResult> VerifyEmailAsync(VerifyEmailRequest request);
-    Task<OperationResult> ResendVerificationEmailAsync(Guid userId);
+    Task<OperationResult> ResendVerificationEmailAsync(Guid userId, string verificationUrl);
     Task<OperationResult<UserDto>> GetCurrentUserAsync(Guid userId);
     Task<OperationResult<UserDto>> UpdateProfileAsync(Guid userId, UpdateUserProfileRequest request);
     Task<OperationResult> DeactivateAccountAsync(Guid userId);

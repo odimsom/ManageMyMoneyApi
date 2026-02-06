@@ -34,7 +34,7 @@ public interface IEmailService
     Task<OperationResult> SendExportCompletedEmailAsync(string to, string userName, string fileName, string fileSize, string exportType, string dateRange, string downloadUrl, int expirationHours);
 
     // System Templates
-    Task<OperationResult> SendEmailVerificationAsync(string to, string userName, string verificationUrl);
+    Task<OperationResult> SendEmailVerificationAsync(string to, string userName, string verificationCode, string verificationUrl, int expirationMinutes);
     Task<OperationResult> SendPasswordResetEmailAsync(string to, string userName, string resetUrl, int expirationMinutes);
     Task<OperationResult> SendPasswordChangedEmailAsync(string to, string userName, DateTime changeDate, string ipAddress);
     Task<OperationResult> SendProfileUpdatedEmailAsync(string to, string userName, string changesHtml, DateTime updateDate, string deviceInfo);

@@ -51,6 +51,11 @@ public record VerifyEmailRequest
     public required string Token { get; init; }
 }
 
+public record ResendVerificationEmailRequest
+{
+    public required string VerificationUrl { get; init; }
+}
+
 public record UserDto
 {
     public Guid Id { get; init; }
