@@ -267,6 +267,9 @@ public class EmailService : IEmailService
 
     private SmtpClient CreateSmtpClient()
     {
+        _logger.LogInformation("Configuring SMTP Client. Host: {Host}, Port: {Port}, SSL: {Ssl}", 
+            _settings.SmtpServer, _settings.SmtpPort, _settings.EnableSsl);
+        
         return new SmtpClient(_settings.SmtpServer, _settings.SmtpPort)
         {
             Credentials = new NetworkCredential(_settings.Username, _settings.Password),
