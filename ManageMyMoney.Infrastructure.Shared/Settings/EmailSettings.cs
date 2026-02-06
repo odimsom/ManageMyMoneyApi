@@ -10,4 +10,5 @@ public record EmailSettings
     public string Password { get; set; } = string.Empty;
     public bool EnableSsl { get; set; } = true;
     public string TemplatesPath { get; set; } = "Email/Templates";
+    public int Timeout { get; set; } = 10000;
 }
