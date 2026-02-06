@@ -60,10 +60,21 @@ public class AuthService : IAuthService
         // Send verification email with all required parameters
         var verificationCode = _tokenService.GenerateRandomToken(6);
         var verificationUrl = $"{request.VerificationUrl}?code={verificationCode}&email={Uri.EscapeDataString(request.Email)}";
-        await _emailService.SendEmailVerificationAsync(
+        
+        var emailResult = await _emailService.SendEmailVerificationAsync(
             request.Email, 
             request.FirstName, 
             verificationUrl);
+
+        if (emailResult.IsFailure)
+        {
+            // If email fails, we should rollback the user creation to prevent "zombie" accounts
+            // that cannot be verified. 
+            // Note: In a real production system, you might use a transaction or a background job.
+            // For now, we will attempt to delete the user.
+            await _userRepository.DeleteAsync(user.Id); 
+            return OperationResult.Failure<AuthResponse>($"Failed to send verification email: {emailResult.Error}");
+        }
 
         // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user.Id, request.Email);
