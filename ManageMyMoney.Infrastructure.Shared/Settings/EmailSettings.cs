@@ -9,5 +9,5 @@ public record EmailSettings
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public bool EnableSsl { get; set; } = true;
-    public string TemplatesPath { get; set; } = "Templates/Email";
+    public string TemplatesPath { get; set; } = "Email/Templates";
 }
