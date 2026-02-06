@@ -64,15 +64,15 @@ builder.Services.AddHealthChecks();
 
 // JWT Configuration
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
-    ?? builder.Configuration["Jwt:SecretKey"]
+    ?? builder.Configuration["JwtSettings:SecretKey"]
     ?? throw new ArgumentNullException("JWT_SECRET_KEY", "JWT Secret Key is required");
 
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
-    ?? builder.Configuration["Jwt:Issuer"]
+    ?? builder.Configuration["JwtSettings:Issuer"]
     ?? throw new ArgumentNullException("JWT_ISSUER", "JWT Issuer is required");
 
 var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
-    ?? builder.Configuration["Jwt:Audience"]
+    ?? builder.Configuration["JwtSettings:Audience"]
     ?? throw new ArgumentNullException("JWT_AUDIENCE", "JWT Audience is required");
 
 // JWT Authentication

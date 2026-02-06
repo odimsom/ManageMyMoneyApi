@@ -23,17 +23,17 @@ public static class DependencyInjection
         // Income - Interface defined, implementation pending
         // services.AddScoped<IIncomeService, IncomeService>();
 
-        // Categories - Interface defined, implementation pending
-        // services.AddScoped<ICategoryService, CategoryService>();
+        // Categories
+        services.AddScoped<ICategoryService, CategoryService>();
 
-        // Accounts - Interface defined, implementation pending
-        // services.AddScoped<IAccountService, AccountService>();
+        // Accounts
+        services.AddScoped<IAccountService, AccountService>();
 
-        // Budgets - Interface defined, implementation pending
-        // services.AddScoped<IBudgetService, BudgetService>();
+        // Budgets
+        services.AddScoped<IBudgetService, BudgetService>();
 
-        // Reports - Interface defined, implementation pending
-        // services.AddScoped<IReportService, ReportService>();
+        // Reports
+        services.AddScoped<IReportService, ReportService>();
 
         // Notifications - Interface defined, implementation pending
         // services.AddScoped<INotificationService, NotificationService>();
