@@ -347,7 +347,7 @@ public class AuthService : IAuthService
             return OperationResult.Failure("Failed to create verification token");
 
         // Send verification email (non-blocking with timeout)
-        var verificationUrlWithCode = $"{verificationUrl}?code={verificationCode}";
+        var verificationUrlWithCode = $"{verificationUrl}";
         
         var emailTask = Task.Run(async () =>
         {
