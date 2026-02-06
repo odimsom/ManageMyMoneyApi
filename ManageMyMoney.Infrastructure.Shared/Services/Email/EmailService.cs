@@ -51,10 +51,12 @@ public class EmailService : IEmailService
     {
         try
         {
-            var templatePath = Path.Combine(_settings.TemplatesPath, $"{templateName}.html");
+            var templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _settings.TemplatesPath, $"{templateName}.html");
+            _logger.LogInformation("Attempting to load email template from: {Path}", templatePath);
+            
             if (!File.Exists(templatePath))
             {
-                _logger.LogWarning("Email template not found: {Template}", templateName);
+                _logger.LogWarning("Email template not found at path: {Path}. BaseDir: {BaseDir}, SettingPath: {SettingPath}", templatePath, AppDomain.CurrentDomain.BaseDirectory, _settings.TemplatesPath);
                 return OperationResult.Failure($"Template not found: {templateName}");
             }
 
