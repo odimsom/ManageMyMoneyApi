@@ -58,18 +58,18 @@ public class AuthService : IAuthService
         var user = userResult.Value!;
 
         // Create and save verification token
-        var verificationCode = _tokenService.GenerateRandomToken(6);
-        var tokenResult = EmailVerificationToken.Create(verificationCode, user.Id, 48); // 48 hours expiration
+        var verificationToken = _tokenService.GenerateRandomToken();
+        var tokenResult = EmailVerificationToken.Create(verificationToken, user.Id, 48); // 48 hours expiration
         if (tokenResult.IsFailure)
             return OperationResult.Failure<AuthResponse>(tokenResult.Error);
 
-        var verificationToken = tokenResult.Value!;
-        var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(verificationToken);
+        var emailVerificationToken = tokenResult.Value!;
+        var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(emailVerificationToken);
         if (saveTokenResult.IsFailure)
             _logger.LogWarning("Failed to save email verification token for {Email}: {Error}", request.Email, saveTokenResult.Error);
 
         // Send verification email with timeout (non-blocking after 3 seconds)
-        var verificationUrl = $"{request.VerificationUrl}?code={verificationCode}";
+        var verificationUrl = $"{request.VerificationUrl}?token={verificationToken}";
         
         // Try to send email with 3-second timeout, then continue regardless
         var emailTask = Task.Run(async () =>
@@ -80,7 +80,7 @@ public class AuthService : IAuthService
                 var result = await _emailService.SendEmailVerificationAsync(
                     request.Email,
                     request.FirstName,
-                    verificationCode,
+                    verificationToken,
                     verificationUrl,
                     60); // 60 minutes expiration for email link display
                 
@@ -334,20 +334,20 @@ public class AuthService : IAuthService
             return OperationResult.Failure("Email is already verified");
 
         // Generate new verification token
-        var verificationCode = _tokenService.GenerateRandomToken(6);
-        var tokenResult = EmailVerificationToken.Create(verificationCode, user.Id, 48); // 48 hours expiration
+        var verificationToken = _tokenService.GenerateRandomToken();
+        var tokenResult = EmailVerificationToken.Create(verificationToken, user.Id, 48); // 48 hours expiration
         if (tokenResult.IsFailure)
             return OperationResult.Failure(tokenResult.Error);
 
-        var verificationToken = tokenResult.Value!;
+        var emailVerificationToken = tokenResult.Value!;
         
         // Save token to database
-        var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(verificationToken);
+        var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(emailVerificationToken);
         if (saveTokenResult.IsFailure)
             return OperationResult.Failure("Failed to create verification token");
 
         // Send verification email (non-blocking with timeout)
-        var verificationUrlWithCode = $"{verificationUrl}";
+        var verificationUrlWithToken = $"{verificationUrl}?token={verificationToken}";
         
         var emailTask = Task.Run(async () =>
         {
@@ -357,8 +357,8 @@ public class AuthService : IAuthService
                 var result = await _emailService.SendEmailVerificationAsync(
                     user.Email.Value,
                     user.FirstName,
-                    verificationCode,
-                    verificationUrlWithCode,
+                    verificationToken,
+                    verificationUrlWithToken,
                     60); // 60 minutes for email link display
                 
                 if (result.IsSuccess)
