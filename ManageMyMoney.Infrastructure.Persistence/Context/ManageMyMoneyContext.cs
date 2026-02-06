@@ -90,13 +90,11 @@ public class ManageMyMoneyContext : DbContext
                 entity.SetTableName(ToSnakeCase(entity.GetTableName() ?? entity.ClrType.Name));
             }
 
-            // Column names - only for owned entities if explicitly configured
+            // Column names - apply snake_case to all properties
             foreach (var property in entity.GetProperties())
             {
-                if (!entity.IsOwned() || property.GetColumnName() != property.Name)
-                {
-                    property.SetColumnName(ToSnakeCase(property.GetColumnName() ?? property.Name));
-                }
+                var currentColumnName = property.GetColumnName();
+                property.SetColumnName(ToSnakeCase(currentColumnName));
             }
 
             // Foreign keys - skip owned entities to avoid conflicts
