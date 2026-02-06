@@ -91,6 +91,9 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             return OperationResult.Failure<AuthResponse>("Account is deactivated");
 
+        if (!user.IsEmailVerified)
+            return OperationResult.Failure<AuthResponse>("Email not verified. Please verify your email before logging in.");
+
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash.HashedValue))
             return OperationResult.Failure<AuthResponse>("Invalid email or password");
 
