@@ -11,11 +11,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Railway usa PORT como variable de entorno
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://*:{port}");
 
-// Controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -25,7 +23,6 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -61,11 +58,9 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// JWT Authentication
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
     ?? builder.Configuration["JwtSettings:SecretKey"];
 
-// Si no hay clave configurada (ni por variable de entorno ni appsettings), usar valor por defecto para desarrollo
 if (string.IsNullOrEmpty(jwtSecretKey))
 {
     jwtSecretKey = "DefaultDevSecretKeyThatIsAtLeast32CharactersLong!";
@@ -79,7 +74,6 @@ var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
     ?? builder.Configuration["JwtSettings:Audience"]
     ?? "ManageMyMoneyUsers";
 
-// Importante: Actualizar la configuración para que IOptions<JwtSettings> reciba estos valores
 builder.Configuration["JwtSettings:SecretKey"] = jwtSecretKey;
 builder.Configuration["JwtSettings:Issuer"] = jwtIssuer;
 builder.Configuration["JwtSettings:Audience"] = jwtAudience;
@@ -108,7 +102,6 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -119,19 +112,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Health checks
 builder.Services.AddHealthChecks();
 
 builder.Services.AddHttpContextAccessor();
 
-// Application Services
 builder.Services.AddApplicationServices();
 builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ManageMyMoneyContext>();
@@ -148,7 +138,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Swagger siempre habilitado
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -156,10 +145,8 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = string.Empty;
 });
 
-// Health check endpoint
 app.MapHealthChecks("/health");
 
-// Middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseCors("AllowAll");

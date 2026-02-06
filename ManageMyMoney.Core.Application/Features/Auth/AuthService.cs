@@ -57,7 +57,6 @@ public class AuthService : IAuthService
 
         var user = userResult.Value!;
 
-        // Send verification email with all required parameters
         var verificationCode = _tokenService.GenerateRandomToken(6);
         var verificationUrl = $"{request.VerificationUrl}?code={verificationCode}&email={Uri.EscapeDataString(request.Email)}";
         
@@ -68,15 +67,10 @@ public class AuthService : IAuthService
 
         if (emailResult.IsFailure)
         {
-            // If email fails, we should rollback the user creation to prevent "zombie" accounts
-            // that cannot be verified. 
-            // Note: In a real production system, you might use a transaction or a background job.
-            // For now, we will attempt to delete the user.
             await _userRepository.DeleteAsync(user.Id); 
             return OperationResult.Failure<AuthResponse>($"Failed to send verification email: {emailResult.Error}");
         }
 
-        // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user.Id, request.Email);
         var refreshToken = _tokenService.GenerateRefreshToken();
 
@@ -127,13 +121,11 @@ public class AuthService : IAuthService
 
     public async Task<OperationResult<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)
     {
-        // Simplified - would need RefreshToken repository
         return await Task.FromResult(OperationResult.Failure<AuthResponse>("Refresh token validation not implemented"));
     }
 
     public Task<OperationResult> LogoutAsync(string refreshToken)
     {
-        // Revoke refresh token
         return Task.FromResult(OperationResult.Success());
     }
 
@@ -169,7 +161,6 @@ public class AuthService : IAuthService
         var userResult = await _userRepository.GetByEmailAsync(request.Email);
         if (userResult.IsFailure)
         {
-            // Don't reveal if email exists - always return success
             return OperationResult.Success();
         }
 
@@ -181,20 +172,18 @@ public class AuthService : IAuthService
             request.Email, 
             user.FirstName, 
             resetUrl, 
-            60); // 60 minutes expiration
+            60);
 
         return OperationResult.Success();
     }
 
     public Task<OperationResult> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        // Validate token and reset password
         return Task.FromResult(OperationResult.Success());
     }
 
     public async Task<OperationResult> VerifyEmailAsync(VerifyEmailRequest request)
     {
-        // Validate token and verify email
         return await Task.FromResult(OperationResult.Success());
     }
 
