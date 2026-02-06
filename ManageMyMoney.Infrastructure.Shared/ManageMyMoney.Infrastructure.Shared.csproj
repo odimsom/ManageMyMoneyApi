@@ -34,19 +34,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Email\Templates\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ManageMyMoney.Core.Application\ManageMyMoney.Core.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Copy Email Templates to output directory -->
-    <None Update="Email\Templates\**\*.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <None Include="Email\Templates\**\*.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

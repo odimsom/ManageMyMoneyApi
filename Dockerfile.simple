@@ -3,7 +3,6 @@ WORKDIR /app
 EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Copiar archivos de proyecto
@@ -21,15 +20,19 @@ COPY . .
 
 # Build
 WORKDIR "/src/ManageMyMoney.Presentation.Api"
-RUN dotnet build "ManageMyMoney.Presentation.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "ManageMyMoney.Presentation.Api.csproj" -c Release -o /app/build
 
 # Publish
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "ManageMyMoney.Presentation.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "ManageMyMoney.Presentation.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Final
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+# Agregar logs para debug
+RUN ls -la /app
+RUN ls -la /app/*.dll || echo "No .dll files found"
+
 ENTRYPOINT ["dotnet", "ManageMyMoney.Presentation.Api.dll"]
