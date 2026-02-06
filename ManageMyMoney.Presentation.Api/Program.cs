@@ -8,6 +8,7 @@ using ManageMyMoney.Core.Application;
 using ManageMyMoney.Infrastructure.Persistence;
 using ManageMyMoney.Infrastructure.Persistence.Context;
 using ManageMyMoney.Infrastructure.Persistence.Seeds;
+using ManageMyMoney.Infrastructure.Persistence.Services;
 using ManageMyMoney.Infrastructure.Shared;
 using ManageMyMoney.Presentation.Api.Middleware;
 
@@ -149,6 +150,7 @@ var app = builder.Build();
 // Verificar si se deben ejecutar las migraciones automáticamente
 var runMigrations = Environment.GetEnvironmentVariable("RUN_MIGRATIONS")?.ToLowerInvariant() == "true";
 var recreateDatabase = Environment.GetEnvironmentVariable("RECREATE_DATABASE")?.ToLowerInvariant() == "true";
+var forceSeedMigrationHistory = Environment.GetEnvironmentVariable("FORCE_SEED_MIGRATION_HISTORY")?.ToLowerInvariant() == "true";
 
 if (runMigrations)
 {
@@ -165,6 +167,21 @@ if (runMigrations)
 
             if (canConnect)
             {
+                // Emergency fix for migration state corruption in production
+                if (forceSeedMigrationHistory)
+                {
+                    logger.LogWarning("FORCE_SEED_MIGRATION_HISTORY=true - Attempting emergency migration history fix");
+                    try
+                    {
+                        await EmergencyFixMigrationHistoryAsync(context, logger);
+                    }
+                    catch (Exception emergencyEx)
+                    {
+                        logger.LogError(emergencyEx, "Emergency migration history fix failed");
+                        // Continue with normal flow
+                    }
+                }
+
                 if (recreateDatabase)
                 {
                     logger.LogWarning("RECREATE_DATABASE=true - Dropping and recreating database...");
@@ -197,21 +214,115 @@ if (runMigrations)
                         }
                         catch (Exception migrationEx)
                         {
-                            logger.LogError(migrationEx, "Error applying migrations - attempting to ensure database is created");
+                            logger.LogError(migrationEx, "Error applying migrations - checking for table existence conflicts");
                             
-                            try
+                            // Check if this is a "table already exists" error
+                            if (migrationEx.Message.Contains("already exists") || 
+                                migrationEx.Message.Contains("42P07") ||
+                                migrationEx.InnerException?.Message.Contains("already exists") == true)
                             {
-                                // Try to ensure database is created first
-                                await context.Database.EnsureCreatedAsync();
-                                logger.LogInformation("Database ensured created");
+                                logger.LogWarning("Tables already exist - attempting to seed migration history");
+                                try
+                                {
+                                    // Check if migrations history table exists first
+                                    var historyTableExists = false;
+                                    try
+                                    {
+                                        await context.Database.ExecuteSqlRawAsync("SELECT 1 FROM \"__EFMigrationsHistory\" LIMIT 1");
+                                        historyTableExists = true;
+                                    }
+                                    catch
+                                    {
+                                        historyTableExists = false;
+                                    }
+                                    
+                                    if (!historyTableExists)
+                                    {
+                                        logger.LogInformation("Migration history table does not exist, creating it...");
+                                        var createHistoryTableSql = @"
+                                            CREATE TABLE ""__EFMigrationsHistory"" (
+                                                ""MigrationId"" character varying(150) NOT NULL,
+                                                ""ProductVersion"" character varying(32) NOT NULL,
+                                                CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
+                                            )";
+                                        await context.Database.ExecuteSqlRawAsync(createHistoryTableSql);
+                                        logger.LogInformation("Migration history table created");
+                                    }
+                                    
+                                    // Get all applied migrations in the database
+                                    var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
+                                    var allMigrations = context.Database.GetMigrations();
+                                    
+                                    logger.LogInformation("Applied migrations count: {Count}", appliedMigrations.Count());
+                                    logger.LogInformation("Total migrations count: {Count}", allMigrations.Count());
+                                    
+                                    if (appliedMigrations.Count() == 0 && allMigrations.Any())
+                                    {
+                                        logger.LogWarning("No migration history found but tables exist - marking migrations as applied");
+                                        
+                                        // Execute raw SQL to insert migration history
+                                        foreach (var migration in allMigrations)
+                                        {
+                                            try
+                                            {
+                                                var sql = $"INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ('{migration}', '8.0.0') ON CONFLICT DO NOTHING";
+                                                await context.Database.ExecuteSqlRawAsync(sql);
+                                                logger.LogInformation("Marked migration as applied: {Migration}", migration);
+                                            }
+                                            catch (Exception markEx)
+                                            {
+                                                logger.LogWarning(markEx, "Could not mark migration as applied: {Migration}", migration);
+                                            }
+                                        }
+                                        
+                                        logger.LogInformation("Migration history seeded successfully");
+                                    }
+                                    else if (appliedMigrations.Any())
+                                    {
+                                        logger.LogInformation("Some migrations already applied - attempting to apply remaining");
+                                        try
+                                        {
+                                            context.Database.Migrate();
+                                            logger.LogInformation("Remaining migrations applied successfully");
+                                        }
+                                        catch (Exception retryEx)
+                                        {
+                                            logger.LogWarning(retryEx, "Could not apply remaining migrations - this may be expected if tables already exist");
+                                        }
+                                    }
+                                }
+                                catch (Exception historyEx)
+                                {
+                                    logger.LogError(historyEx, "Error handling migration history");
+                                    
+                                    // Fallback: try to ensure database is created (for completely fresh setup)
+                                    try
+                                    {
+                                        await context.Database.EnsureCreatedAsync();
+                                        logger.LogInformation("Database ensured created as fallback");
+                                    }
+                                    catch (Exception createEx)
+                                    {
+                                        logger.LogError(createEx, "Error with fallback database creation");
+                                        logger.LogWarning("Database appears to exist but with incompatible schema. Manual intervention may be required.");
+                                        logger.LogWarning("Consider dropping and recreating the database in Railway dashboard.");
+                                    }
+                                }
                             }
-                            catch (Exception createEx)
+                            else
                             {
-                                logger.LogError(createEx, "Error creating database - checking if it already exists with different schema");
-                                
-                                // If database exists but has wrong schema, log the issue but continue
-                                logger.LogWarning("Database appears to exist but with incompatible schema. Manual intervention may be required.");
-                                logger.LogWarning("Consider dropping and recreating the database in Railway dashboard.");
+                                // For other migration errors, try the original fallback
+                                try
+                                {
+                                    await context.Database.EnsureCreatedAsync();
+                                    logger.LogInformation("Database ensured created");
+                                }
+                                catch (Exception createEx)
+                                {
+                                    logger.LogError(createEx, "Error creating database - checking if it already exists with different schema");
+                                    logger.LogWarning("Database appears to exist but with incompatible schema. Manual intervention may be required.");
+                                    logger.LogWarning("Consider dropping and recreating the database in Railway dashboard.");
+                                }
                             }
                         }
                     }
@@ -310,3 +421,103 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Emergency method to fix migration history corruption
+static async Task EmergencyFixMigrationHistoryAsync(ManageMyMoneyContext context, ILogger logger)
+{
+    logger.LogInformation("🚑 Starting emergency migration history fix...");
+
+    // Check if migrations history table exists
+    bool historyTableExists;
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync("SELECT 1 FROM \"__EFMigrationsHistory\" LIMIT 1");
+        historyTableExists = true;
+        logger.LogInformation("Migration history table exists");
+    }
+    catch
+    {
+        historyTableExists = false;
+        logger.LogInformation("Migration history table does not exist");
+    }
+
+    if (!historyTableExists)
+    {
+        logger.LogInformation("Creating migration history table...");
+        var createHistoryTableSql = @"
+            CREATE TABLE ""__EFMigrationsHistory"" (
+                ""MigrationId"" character varying(150) NOT NULL,
+                ""ProductVersion"" character varying(32) NOT NULL,
+                CONSTRAINT ""PK___EFMigrationsHistory"" PRIMARY KEY (""MigrationId"")
+            )";
+        await context.Database.ExecuteSqlRawAsync(createHistoryTableSql);
+        logger.LogInformation("✅ Migration history table created");
+    }
+
+    var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
+    var allMigrations = context.Database.GetMigrations();
+
+    logger.LogInformation("Applied migrations: {Count}", appliedMigrations.Count());
+    logger.LogInformation("Total migrations: {Count}", allMigrations.Count());
+
+    if (appliedMigrations.Count() == 0 && allMigrations.Any())
+    {
+        // Check if critical tables exist before marking migrations as applied
+        var criticalTablesExist = await CheckCriticalTablesExistAsync(context, logger);
+        
+        if (criticalTablesExist)
+        {
+            logger.LogInformation("Critical tables exist - marking all migrations as applied...");
+            
+            foreach (var migration in allMigrations)
+            {
+                try
+                {
+                    var sql = $"INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ('{migration}', '8.0.0') ON CONFLICT DO NOTHING";
+                    await context.Database.ExecuteSqlRawAsync(sql);
+                    logger.LogInformation("✅ Marked migration as applied: {Migration}", migration);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Could not mark migration as applied: {Migration}", migration);
+                }
+            }
+            
+            logger.LogInformation("✅ Emergency migration history fix completed successfully");
+        }
+        else
+        {
+            logger.LogInformation("Critical tables don't exist - normal migration flow will handle this");
+        }
+    }
+    else
+    {
+        logger.LogInformation("Migration history already exists with {Count} applied migrations", appliedMigrations.Count());
+    }
+}
+
+static async Task<bool> CheckCriticalTablesExistAsync(ManageMyMoneyContext context, ILogger logger)
+{
+    var criticalTables = new[] { "users", "account_transactions", "expenses", "categories" };
+    var existingTables = 0;
+
+    foreach (var table in criticalTables)
+    {
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync($"SELECT 1 FROM \"{table}\" LIMIT 1");
+            existingTables++;
+            logger.LogInformation("✅ Table exists: {TableName}", table);
+        }
+        catch
+        {
+            logger.LogInformation("❌ Table missing: {TableName}", table);
+        }
+    }
+
+    var tablesExist = existingTables > criticalTables.Length / 2;
+    logger.LogInformation("Critical tables check: {ExistingCount}/{TotalCount} exist = {Result}", 
+        existingTables, criticalTables.Length, tablesExist ? "PASS" : "FAIL");
+    
+    return tablesExist;
+}

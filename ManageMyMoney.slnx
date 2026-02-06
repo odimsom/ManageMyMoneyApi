@@ -11,4 +11,7 @@
   <Folder Name="/src/Presentation/">
     <Project Path="ManageMyMoney.Presentation.Api/ManageMyMoney.Presentation.Api.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="ManageMyMoney.Tools.DatabaseFixer/ManageMyMoney.Tools.DatabaseFixer.csproj" />
+  </Folder>
 </Solution>

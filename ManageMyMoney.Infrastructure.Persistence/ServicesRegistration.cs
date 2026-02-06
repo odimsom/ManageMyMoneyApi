@@ -5,6 +5,7 @@ using ManageMyMoney.Infrastructure.Persistence.Repositories.Auth;
 using ManageMyMoney.Infrastructure.Persistence.Repositories.Budgets;
 using ManageMyMoney.Infrastructure.Persistence.Repositories.Categories;
 using ManageMyMoney.Infrastructure.Persistence.Repositories.Expenses;
+using ManageMyMoney.Infrastructure.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,6 +38,9 @@ public static class ServicesRegistration
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IBudgetRepository, BudgetRepository>();
         services.AddScoped<ISavingsGoalRepository, SavingsGoalRepository>();
+
+        // Services
+        services.AddScoped<DatabaseInitializationService>();
 
         return services;
     }
