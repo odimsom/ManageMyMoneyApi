@@ -38,6 +38,9 @@ public class AccountEntityConfiguration : IEntityTypeConfiguration<Account>
                 .HasColumnName("balance_currency")
                 .IsRequired()
                 .HasMaxLength(3);
+                
+            // Ensure this owned entity doesn't create its own key
+            money.HasNoKey();
         });
 
         builder.Property(a => a.Currency)
