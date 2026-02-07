@@ -70,7 +70,7 @@ public class Expense
             Id = Guid.NewGuid(),
             Amount = moneyResult.Value!,
             Description = description,
-            Date = date,
+            Date = date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(date, DateTimeKind.Utc) : date.ToUniversalTime(),
             CategoryId = categoryId,
             SubcategoryId = subcategoryId,
             AccountId = accountId,

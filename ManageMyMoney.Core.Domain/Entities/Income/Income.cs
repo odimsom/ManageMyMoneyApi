@@ -48,7 +48,7 @@ public class Income
             Id = Guid.NewGuid(),
             Amount = amountResult.Value!,
             Description = description.Trim(),
-            Date = date,
+            Date = date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(date, DateTimeKind.Utc) : date.ToUniversalTime(),
             IncomeSourceId = incomeSourceId,
             AccountId = accountId,
             UserId = userId,

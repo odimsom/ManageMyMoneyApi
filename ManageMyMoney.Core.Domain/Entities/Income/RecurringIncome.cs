@@ -58,8 +58,8 @@ public class RecurringIncome
             IncomeSourceId = incomeSourceId,
             AccountId = accountId,
             UserId = userId,
-            StartDate = startDate,
-            EndDate = endDate,
+            StartDate = startDate.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(startDate, DateTimeKind.Utc) : startDate.ToUniversalTime(),
+            EndDate = endDate.HasValue ? (endDate.Value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : endDate.Value.ToUniversalTime()) : null,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
