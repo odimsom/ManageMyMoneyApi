@@ -52,5 +52,15 @@ public class IncomeSource
         return OperationResult.Success();
     }
 
+    public void Update(string name, string? description, string? icon, string? color)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+            Name = name.Trim();
+        
+        Description = description?.Trim();
+        Icon = icon;
+        Color = color;
+    }
+
     public void Deactivate() => IsActive = false;
 }

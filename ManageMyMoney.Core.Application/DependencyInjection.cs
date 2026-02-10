@@ -20,8 +20,8 @@ public static class DependencyInjection
         // Expenses
         services.AddScoped<IExpenseService, ExpenseService>();
 
-        // Income - Interface defined, implementation pending
-        // services.AddScoped<IIncomeService, IncomeService>();
+        // Income
+        services.AddScoped<IIncomeService, IncomeService>();
 
         // Categories
         services.AddScoped<ICategoryService, CategoryService>();
@@ -35,8 +35,8 @@ public static class DependencyInjection
         // Reports
         services.AddScoped<IReportService, ReportService>();
 
-        // Notifications - Interface defined, implementation pending
-        // services.AddScoped<INotificationService, NotificationService>();
+        // Notifications
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }
