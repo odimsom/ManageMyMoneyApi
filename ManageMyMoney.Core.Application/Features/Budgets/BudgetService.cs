@@ -263,8 +263,31 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Creating savings goal {GoalName} for user {UserId}", request.Name, userId);
 
-            // TODO: Implementar cuando se complete la entidad SavingsGoal
-            return OperationResult.Failure<SavingsGoalResponse>("Savings goal functionality not yet available");
+            var createResult = SavingsGoal.Create(
+                request.Name,
+                request.TargetAmount,
+                request.Currency,
+                userId,
+                request.TargetDate,
+                request.Description,
+                request.Icon,
+                request.Color,
+                request.LinkedAccountId
+            );
+
+            if (!createResult.IsSuccess)
+                return OperationResult.Failure<SavingsGoalResponse>(createResult.Error);
+
+            var goal = createResult.Value;
+            var addResult = await _savingsGoalRepository.AddAsync(goal);
+            
+            if (!addResult.IsSuccess)
+                return OperationResult.Failure<SavingsGoalResponse>(addResult.Error);
+
+            var response = MapToSavingsGoalResponse(goal);
+            _logger.LogInformation("Savings goal {GoalId} created successfully for user {UserId}", goal.Id, userId);
+            
+            return OperationResult.Success(response);
         }
         catch (Exception ex)
         {
@@ -279,7 +302,16 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Getting savings goal {GoalId} for user {UserId}", goalId, userId);
             
-            return OperationResult.Failure<SavingsGoalResponse>("Savings goal functionality not yet available");
+            var result = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!result.IsSuccess)
+                return OperationResult.Failure<SavingsGoalResponse>(result.Error);
+
+            var goal = result.Value;
+            if (goal.UserId != userId)
+                return OperationResult.Failure<SavingsGoalResponse>("Savings goal not found");
+
+            var response = MapToSavingsGoalResponse(goal);
+            return OperationResult.Success(response);
         }
         catch (Exception ex)
         {
@@ -294,8 +326,22 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Getting savings goals for user {UserId}, status: {Status}", userId, status);
             
-            var emptyList = Enumerable.Empty<SavingsGoalResponse>();
-            return OperationResult.Success(emptyList);
+            OperationResult<IEnumerable<SavingsGoal>> result;
+
+            if (!string.IsNullOrEmpty(status) && Enum.TryParse<GoalStatus>(status, true, out var goalStatus))
+            {
+                result = await _savingsGoalRepository.GetByStatusAsync(userId, goalStatus);
+            }
+            else
+            {
+                result = await _savingsGoalRepository.GetAllByUserAsync(userId);
+            }
+
+            if (!result.IsSuccess)
+                return OperationResult.Failure<IEnumerable<SavingsGoalResponse>>(result.Error);
+
+            var responses = result.Value.Select(MapToSavingsGoalResponse);
+            return OperationResult.Success(responses);
         }
         catch (Exception ex)
         {
@@ -310,7 +356,31 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Updating savings goal {GoalId} for user {UserId}", goalId, userId);
             
-            return OperationResult.Failure<SavingsGoalResponse>("Savings goal functionality not yet available");
+            var getResult = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!getResult.IsSuccess)
+                return OperationResult.Failure<SavingsGoalResponse>(getResult.Error);
+
+            var goal = getResult.Value;
+            if (goal.UserId != userId)
+                return OperationResult.Failure<SavingsGoalResponse>("Savings goal not found");
+
+            var updateGoalResult = goal.Update(
+                request.Name,
+                request.TargetAmount,
+                request.TargetDate,
+                request.Description,
+                request.Icon,
+                request.Color
+            );
+
+            if (!updateGoalResult.IsSuccess)
+                return OperationResult.Failure<SavingsGoalResponse>(updateGoalResult.Error);
+
+            var updateResult = await _savingsGoalRepository.UpdateAsync(goal);
+            if (!updateResult.IsSuccess)
+                return OperationResult.Failure<SavingsGoalResponse>(updateResult.Error);
+
+            return OperationResult.Success(MapToSavingsGoalResponse(goal));
         }
         catch (Exception ex)
         {
@@ -325,7 +395,14 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Pausing savings goal {GoalId} for user {UserId}", goalId, userId);
             
-            return OperationResult.Failure("Savings goal functionality not yet available");
+            var getResult = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!getResult.IsSuccess) return OperationResult.Failure(getResult.Error);
+
+            var goal = getResult.Value;
+            if (goal.UserId != userId) return OperationResult.Failure("Savings goal not found");
+
+            goal.Pause();
+            return await _savingsGoalRepository.UpdateAsync(goal);
         }
         catch (Exception ex)
         {
@@ -340,7 +417,14 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Resuming savings goal {GoalId} for user {UserId}", goalId, userId);
             
-            return OperationResult.Failure("Savings goal functionality not yet available");
+            var getResult = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!getResult.IsSuccess) return OperationResult.Failure(getResult.Error);
+
+            var goal = getResult.Value;
+            if (goal.UserId != userId) return OperationResult.Failure("Savings goal not found");
+
+            goal.Resume();
+            return await _savingsGoalRepository.UpdateAsync(goal);
         }
         catch (Exception ex)
         {
@@ -355,7 +439,14 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Canceling savings goal {GoalId} for user {UserId}", goalId, userId);
             
-            return OperationResult.Failure("Savings goal functionality not yet available");
+            var getResult = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!getResult.IsSuccess) return OperationResult.Failure(getResult.Error);
+
+            var goal = getResult.Value;
+            if (goal.UserId != userId) return OperationResult.Failure("Savings goal not found");
+
+            goal.Cancel();
+            return await _savingsGoalRepository.UpdateAsync(goal);
         }
         catch (Exception ex)
         {
@@ -370,7 +461,32 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Adding contribution to savings goal {GoalId} for user {UserId}", goalId, userId);
             
-            return OperationResult.Failure<ContributionResponse>("Savings goal functionality not yet available");
+            var getResult = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!getResult.IsSuccess) return OperationResult.Failure<ContributionResponse>(getResult.Error);
+
+            var goal = getResult.Value;
+            if (goal.UserId != userId) return OperationResult.Failure<ContributionResponse>("Savings goal not found");
+
+            var contributionResult = GoalContribution.Create(
+                goalId,
+                request.Amount,
+                goal.TargetAmount.Currency,
+                request.Date,
+                request.Notes
+            );
+
+            if (!contributionResult.IsSuccess)
+                return OperationResult.Failure<ContributionResponse>(contributionResult.Error);
+
+            var contribution = contributionResult.Value;
+            var addResult = goal.AddContribution(contribution);
+            
+            if (!addResult.IsSuccess)
+                return OperationResult.Failure<ContributionResponse>(addResult.Error);
+
+            await _savingsGoalRepository.UpdateAsync(goal);
+            
+            return OperationResult.Success(MapToContributionResponse(contribution, goal.TargetAmount.Currency));
         }
         catch (Exception ex)
         {
@@ -385,8 +501,14 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Getting contributions for savings goal {GoalId}, user {UserId}", goalId, userId);
             
-            var emptyList = Enumerable.Empty<ContributionResponse>();
-            return OperationResult.Success(emptyList);
+            var result = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!result.IsSuccess) return OperationResult.Failure<IEnumerable<ContributionResponse>>(result.Error);
+
+            var goal = result.Value;
+            if (goal.UserId != userId) return OperationResult.Failure<IEnumerable<ContributionResponse>>("Savings goal not found");
+
+            var responses = goal.Contributions.Select(c => MapToContributionResponse(c, goal.TargetAmount.Currency));
+            return OperationResult.Success(responses);
         }
         catch (Exception ex)
         {
@@ -401,7 +523,19 @@ public class BudgetService : IBudgetService
         {
             _logger.LogInformation("Withdrawing {Amount} from savings goal {GoalId} for user {UserId}", amount, goalId, userId);
             
-            return OperationResult.Failure("Savings goal functionality not yet available");
+            var getResult = await _savingsGoalRepository.GetByIdAsync(goalId);
+            if (!getResult.IsSuccess) return OperationResult.Failure(getResult.Error);
+
+            var goal = getResult.Value;
+            if (goal.UserId != userId) return OperationResult.Failure("Savings goal not found");
+
+            var moneyResult = Money.Create(amount, goal.TargetAmount.Currency);
+            if (moneyResult.IsFailure) return OperationResult.Failure(moneyResult.Error);
+
+            var withdrawResult = goal.Withdraw(moneyResult.Value!);
+            if (!withdrawResult.IsSuccess) return withdrawResult;
+
+            return await _savingsGoalRepository.UpdateAsync(goal);
         }
         catch (Exception ex)
         {
@@ -432,6 +566,43 @@ public class BudgetService : IBudgetService
             AlertsEnabled = budget.AlertsEnabled,
             CategoryIds = budget.CategoryIds.ToList(),
             CreatedAt = budget.CreatedAt
+        };
+    }
+
+    private static SavingsGoalResponse MapToSavingsGoalResponse(SavingsGoal goal)
+    {
+        return new SavingsGoalResponse
+        {
+            Id = goal.Id,
+            Name = goal.Name,
+            Description = goal.Description,
+            TargetAmount = goal.TargetAmount.Amount,
+            CurrentAmount = goal.CurrentAmount.Amount,
+            RemainingAmount = goal.RemainingAmount.Amount,
+            Currency = goal.TargetAmount.Currency,
+            TargetDate = goal.TargetDate,
+            DaysRemaining = goal.DaysRemaining,
+            ProgressPercentage = goal.ProgressPercentage,
+            RequiredMonthlyContribution = goal.RequiredMonthlyContribution?.Amount,
+            Icon = goal.Icon,
+            Color = goal.Color,
+            Status = goal.Status.ToString(),
+            LinkedAccountId = goal.LinkedAccountId,
+            CreatedAt = goal.CreatedAt,
+            CompletedAt = goal.CompletedAt
+        };
+    }
+
+    private static ContributionResponse MapToContributionResponse(GoalContribution contribution, string currency)
+    {
+        return new ContributionResponse
+        {
+            Id = contribution.Id,
+            SavingsGoalId = contribution.SavingsGoalId,
+            Amount = contribution.Amount.Amount,
+            Currency = currency,
+            Date = contribution.Date,
+            Notes = contribution.Notes
         };
     }
 }

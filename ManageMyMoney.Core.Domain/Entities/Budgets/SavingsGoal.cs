@@ -148,4 +148,45 @@ public class SavingsGoal
     public void Pause() => Status = GoalStatus.Paused;
     public void Resume() => Status = GoalStatus.Active;
     public void Cancel() => Status = GoalStatus.Cancelled;
+
+    public OperationResult Update(
+        string? name = null,
+        decimal? targetAmount = null,
+        DateTime? targetDate = null,
+        string? description = null,
+        string? icon = null,
+        string? color = null)
+    {
+        if (name != null)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return OperationResult.Failure("Goal name is required");
+            if (name.Length > 100)
+                return OperationResult.Failure("Goal name cannot exceed 100 characters");
+            Name = name.Trim();
+        }
+
+        if (targetAmount.HasValue)
+        {
+            var targetResult = Money.Create(targetAmount.Value, TargetAmount.Currency);
+            if (targetResult.IsFailure)
+                return targetResult;
+            if (targetResult.Value!.Amount <= 0)
+                return OperationResult.Failure("Target amount must be greater than zero");
+            TargetAmount = targetResult.Value!;
+        }
+
+        if (targetDate.HasValue)
+        {
+            if (targetDate.Value <= DateTime.UtcNow)
+                return OperationResult.Failure("Target date must be in the future");
+            TargetDate = targetDate;
+        }
+
+        if (description != null) Description = description.Trim();
+        if (icon != null) Icon = icon;
+        if (color != null) Color = color;
+
+        return OperationResult.Success();
+    }
 }
