@@ -13,15 +13,18 @@ public class BudgetService : IBudgetService
     private readonly ILogger<BudgetService> _logger;
     private readonly IBudgetRepository _budgetRepository;
     private readonly ISavingsGoalRepository _savingsGoalRepository;
+    private readonly IAccountRepository _accountRepository;
 
     public BudgetService(
         ILogger<BudgetService> logger, 
         IBudgetRepository budgetRepository,
-        ISavingsGoalRepository savingsGoalRepository)
+        ISavingsGoalRepository savingsGoalRepository,
+        IAccountRepository accountRepository)
     {
         _logger = logger;
         _budgetRepository = budgetRepository;
         _savingsGoalRepository = savingsGoalRepository;
+        _accountRepository = accountRepository;
     }
 
     public async Task<OperationResult<BudgetResponse>> CreateBudgetAsync(Guid userId, CreateBudgetRequest request)
@@ -361,7 +364,7 @@ public class BudgetService : IBudgetService
                 return OperationResult.Failure<SavingsGoalResponse>(getResult.Error);
 
             var goal = getResult.Value;
-            if (goal.UserId != userId)
+            if (goal == null || goal.UserId != userId)
                 return OperationResult.Failure<SavingsGoalResponse>("Savings goal not found");
 
             var updateGoalResult = goal.Update(
@@ -465,7 +468,7 @@ public class BudgetService : IBudgetService
             if (!getResult.IsSuccess) return OperationResult.Failure<ContributionResponse>(getResult.Error);
 
             var goal = getResult.Value;
-            if (goal.UserId != userId) return OperationResult.Failure<ContributionResponse>("Savings goal not found");
+            if (goal == null || goal.UserId != userId) return OperationResult.Failure<ContributionResponse>("Savings goal not found");
 
             var contributionResult = GoalContribution.Create(
                 goalId,
@@ -479,6 +482,24 @@ public class BudgetService : IBudgetService
                 return OperationResult.Failure<ContributionResponse>(contributionResult.Error);
 
             var contribution = contributionResult.Value;
+
+            // Balance Synchronization: Debit from account
+            var accountId = request.AccountId ?? goal.LinkedAccountId;
+            if (accountId.HasValue)
+            {
+                var accountResult = await _accountRepository.GetByIdAsync(accountId.Value);
+                if (accountResult.IsSuccess && accountResult.Value != null)
+                {
+                    var debitMoney = Money.Create(request.Amount, goal.TargetAmount.Currency);
+                    if (debitMoney.IsSuccess)
+                    {
+                        var debitResult = accountResult.Value.Debit(debitMoney.Value!);
+                        if (debitResult.IsFailure) return OperationResult.Failure<ContributionResponse>(debitResult.Error);
+                        await _accountRepository.UpdateAsync(accountResult.Value);
+                    }
+                }
+            }
+
             var addResult = goal.AddContribution(contribution);
             
             if (!addResult.IsSuccess)
@@ -529,10 +550,21 @@ public class BudgetService : IBudgetService
             if (!getResult.IsSuccess) return OperationResult.Failure(getResult.Error);
 
             var goal = getResult.Value;
-            if (goal.UserId != userId) return OperationResult.Failure("Savings goal not found");
+            if (goal == null || goal.UserId != userId) return OperationResult.Failure("Savings goal not found");
 
             var moneyResult = Money.Create(amount, goal.TargetAmount.Currency);
             if (moneyResult.IsFailure) return OperationResult.Failure(moneyResult.Error);
+
+            // Balance Synchronization: Credit back to linked account
+            if (goal.LinkedAccountId.HasValue)
+            {
+                var accountResult = await _accountRepository.GetByIdAsync(goal.LinkedAccountId.Value);
+                if (accountResult.IsSuccess && accountResult.Value != null)
+                {
+                    accountResult.Value.Credit(moneyResult.Value!);
+                    await _accountRepository.UpdateAsync(accountResult.Value);
+                }
+            }
 
             var withdrawResult = goal.Withdraw(moneyResult.Value!);
             if (!withdrawResult.IsSuccess) return withdrawResult;

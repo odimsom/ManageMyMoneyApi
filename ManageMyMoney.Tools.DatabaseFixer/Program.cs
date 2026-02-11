@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using ManageMyMoney.Infrastructure.Persistence;
 using ManageMyMoney.Infrastructure.Persistence.Context;
 

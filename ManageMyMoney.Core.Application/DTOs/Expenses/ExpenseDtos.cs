@@ -29,6 +29,7 @@ public record UpdateExpenseRequest
     public DateTime? Date { get; init; }
     public Guid? CategoryId { get; init; }
     public Guid? SubcategoryId { get; init; }
+    public Guid? AccountId { get; init; }
     public string? Notes { get; init; }
     public string? Location { get; init; }
 }

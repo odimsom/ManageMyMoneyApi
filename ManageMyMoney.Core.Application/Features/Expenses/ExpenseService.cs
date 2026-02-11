@@ -197,6 +197,11 @@ public class ExpenseService : IExpenseService
         if (expense.UserId != userId)
             return OperationResult.Failure<ExpenseResponse>("Expense not found");
 
+        // Keep track of old values for balance synchronization
+        var oldAmount = expense.Amount.Amount;
+        var oldAccountId = expense.AccountId;
+        var currency = expense.Amount.Currency;
+
         var category = await _categoryRepository.GetByIdAsync(expense.CategoryId);
         var isFixed = category.IsSuccess && category.Value!.IsFixed;
 
@@ -221,6 +226,60 @@ public class ExpenseService : IExpenseService
                 return OperationResult.Failure<ExpenseResponse>(updateResult.Error);
         }
 
+        if (request.Notes != null) expense.UpdateNotes(request.Notes);
+        if (request.Location != null) expense.UpdateLocation(request.Location);
+
+        // Account Change Logic
+        if (request.AccountId.HasValue && request.AccountId.Value != oldAccountId)
+        {
+            // 1. Refund old account
+            var oldAccount = await _accountRepository.GetByIdAsync(oldAccountId);
+            if (oldAccount.IsSuccess && oldAccount.Value != null)
+            {
+                var oldMoney = Money.Create(oldAmount, currency);
+                if (oldMoney.IsSuccess)
+                {
+                    oldAccount.Value.Credit(oldMoney.Value!);
+                    await _accountRepository.UpdateAsync(oldAccount.Value);
+                }
+            }
+
+            // 2. Update to new account
+            expense.UpdateAccount(request.AccountId.Value);
+
+            // 3. Debit from new account
+            var newAccount = await _accountRepository.GetByIdAsync(request.AccountId.Value);
+            if (newAccount.IsSuccess && newAccount.Value != null)
+            {
+                var newMoney = Money.Create(expense.Amount.Amount, currency);
+                if (newMoney.IsSuccess)
+                {
+                    newAccount.Value.Debit(newMoney.Value!);
+                    await _accountRepository.UpdateAsync(newAccount.Value);
+                }
+            }
+        }
+        else if (request.Amount.HasValue && request.Amount.Value != oldAmount)
+        {
+            // Handle amount change in the same account
+            var account = await _accountRepository.GetByIdAsync(expense.AccountId);
+            if (account.IsSuccess && account.Value != null)
+            {
+                var difference = expense.Amount.Amount - oldAmount;
+                if (difference != 0)
+                {
+                    var diffMoney = Money.Create(Math.Abs(difference), currency);
+                    if (diffMoney.IsSuccess)
+                    {
+                        if (difference > 0) account.Value.Debit(diffMoney.Value!);
+                        else account.Value.Credit(diffMoney.Value!);
+                        
+                        await _accountRepository.UpdateAsync(account.Value);
+                    }
+                }
+            }
+        }
+
         var saveResult = await _expenseRepository.UpdateAsync(expense);
         if (saveResult.IsFailure)
             return OperationResult.Failure<ExpenseResponse>(saveResult.Error);
@@ -236,6 +295,16 @@ public class ExpenseService : IExpenseService
 
         if (expenseResult.Value.UserId != userId)
             return OperationResult.Failure("Expense not found");
+
+        var expense = expenseResult.Value;
+
+        // Refund the amount to the associated account
+        var account = await _accountRepository.GetByIdAsync(expense.AccountId);
+        if (account.IsSuccess && account.Value != null)
+        {
+            account.Value.Credit(expense.Amount);
+            await _accountRepository.UpdateAsync(account.Value);
+        }
 
         return await _expenseRepository.DeleteAsync(expenseId);
     }

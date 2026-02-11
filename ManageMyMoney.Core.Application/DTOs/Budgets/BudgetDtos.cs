@@ -112,6 +112,7 @@ public record AddContributionRequest
 {
     public decimal Amount { get; init; }
     public DateTime Date { get; init; }
+    public Guid? AccountId { get; init; }
     public string? Notes { get; init; }
 }
 

@@ -17,6 +17,7 @@ public record UpdateIncomeRequest
     public string? Description { get; init; }
     public DateTime? Date { get; init; }
     public Guid? IncomeSourceId { get; init; }
+    public Guid? AccountId { get; init; }
     public string? Notes { get; init; }
 }
 

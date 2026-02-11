@@ -147,6 +147,11 @@ public class IncomeService : IIncomeService
         if (income.UserId != userId)
             return OperationResult.Failure<IncomeResponse>("Income not found");
 
+        // Keep track of old values for balance synchronization
+        var oldAmount = income.Amount.Amount;
+        var oldAccountId = income.AccountId;
+        var currency = income.Amount.Currency;
+
         if (request.Amount.HasValue)
         {
             var updateResult = income.UpdateAmount(request.Amount.Value);
@@ -180,6 +185,57 @@ public class IncomeService : IIncomeService
             income.UpdateNotes(request.Notes);
         }
 
+        // Account Change Logic
+        if (request.AccountId.HasValue && request.AccountId.Value != oldAccountId)
+        {
+            // 1. Debit from old account (reverse credit)
+            var oldAccount = await _accountRepository.GetByIdAsync(oldAccountId);
+            if (oldAccount.IsSuccess && oldAccount.Value != null)
+            {
+                var oldMoney = Money.Create(oldAmount, currency);
+                if (oldMoney.IsSuccess)
+                {
+                    oldAccount.Value.Debit(oldMoney.Value!);
+                    await _accountRepository.UpdateAsync(oldAccount.Value);
+                }
+            }
+
+            // 2. Update to new account
+            income.UpdateAccount(request.AccountId.Value);
+
+            // 3. Credit to new account
+            var newAccount = await _accountRepository.GetByIdAsync(request.AccountId.Value);
+            if (newAccount.IsSuccess && newAccount.Value != null)
+            {
+                var newMoney = Money.Create(income.Amount.Amount, currency);
+                if (newMoney.IsSuccess)
+                {
+                    newAccount.Value.Credit(newMoney.Value!);
+                    await _accountRepository.UpdateAsync(newAccount.Value);
+                }
+            }
+        }
+        else if (request.Amount.HasValue && request.Amount.Value != oldAmount)
+        {
+            // Handle amount change in the same account
+            var account = await _accountRepository.GetByIdAsync(income.AccountId);
+            if (account.IsSuccess && account.Value != null)
+            {
+                var difference = income.Amount.Amount - oldAmount;
+                if (difference != 0)
+                {
+                    var diffMoney = Money.Create(Math.Abs(difference), currency);
+                    if (diffMoney.IsSuccess)
+                    {
+                        if (difference > 0) account.Value.Credit(diffMoney.Value!);
+                        else account.Value.Debit(diffMoney.Value!);
+                        
+                        await _accountRepository.UpdateAsync(account.Value);
+                    }
+                }
+            }
+        }
+
         var saveResult = await _incomeRepository.UpdateAsync(income);
         if (saveResult.IsFailure)
             return OperationResult.Failure<IncomeResponse>(saveResult.Error);
@@ -195,6 +251,16 @@ public class IncomeService : IIncomeService
 
         if (incomeResult.Value.UserId != userId)
             return OperationResult.Failure("Income not found");
+
+        var income = incomeResult.Value;
+
+        // Subtract the amount from the associated account (reverse credit)
+        var account = await _accountRepository.GetByIdAsync(income.AccountId);
+        if (account.IsSuccess && account.Value != null)
+        {
+            account.Value.Debit(income.Amount);
+            await _accountRepository.UpdateAsync(account.Value);
+        }
 
         return await _incomeRepository.DeleteAsync(incomeId);
     }

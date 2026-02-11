@@ -99,6 +99,12 @@ public class Income
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateAccount(Guid accountId)
+    {
+        AccountId = accountId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void UpdateNotes(string? notes)
     {
         Notes = notes?.Trim();

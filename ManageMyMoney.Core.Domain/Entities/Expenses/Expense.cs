@@ -125,6 +125,13 @@ public class Expense
         return OperationResult.Success();
     }
 
+    public OperationResult UpdateAccount(Guid accountId)
+    {
+        AccountId = accountId;
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
+
     public OperationResult UpdateNotes(string? notes)
     {
         Notes = notes;
