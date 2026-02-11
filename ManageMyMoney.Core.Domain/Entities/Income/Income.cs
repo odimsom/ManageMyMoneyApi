@@ -74,6 +74,37 @@ public class Income
         return OperationResult.Success();
     }
 
+    public OperationResult UpdateDescription(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return OperationResult.Failure("Description is required");
+
+        if (description.Length > 500)
+            return OperationResult.Failure("Description cannot exceed 500 characters");
+
+        Description = description.Trim();
+        UpdatedAt = DateTime.UtcNow;
+        return OperationResult.Success();
+    }
+
+    public void UpdateDate(DateTime date)
+    {
+        Date = date.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(date, DateTimeKind.Utc) : date.ToUniversalTime();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateIncomeSource(Guid incomeSourceId)
+    {
+        IncomeSourceId = incomeSourceId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateNotes(string? notes)
+    {
+        Notes = notes?.Trim();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void MarkAsRecurring(Guid recurringIncomeId)
     {
         IsRecurring = true;

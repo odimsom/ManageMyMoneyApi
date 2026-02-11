@@ -154,6 +154,32 @@ public class IncomeService : IIncomeService
                 return OperationResult.Failure<IncomeResponse>(updateResult.Error);
         }
 
+        if (request.Description != null)
+        {
+            var updateResult = income.UpdateDescription(request.Description);
+            if (updateResult.IsFailure)
+                return OperationResult.Failure<IncomeResponse>(updateResult.Error);
+        }
+
+        if (request.Date.HasValue)
+        {
+            income.UpdateDate(request.Date.Value);
+        }
+
+        if (request.IncomeSourceId.HasValue)
+        {
+            var sourceExists = await _incomeSourceRepository.ExistsAsync(request.IncomeSourceId.Value);
+            if (sourceExists.IsFailure || !sourceExists.Value)
+                return OperationResult.Failure<IncomeResponse>("Income source not found");
+
+            income.UpdateIncomeSource(request.IncomeSourceId.Value);
+        }
+
+        if (request.Notes != null)
+        {
+            income.UpdateNotes(request.Notes);
+        }
+
         var saveResult = await _incomeRepository.UpdateAsync(income);
         if (saveResult.IsFailure)
             return OperationResult.Failure<IncomeResponse>(saveResult.Error);
