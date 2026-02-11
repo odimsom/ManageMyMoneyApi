@@ -102,17 +102,13 @@ public class AuthService : IAuthService
         // Wait up to 3 seconds for email, then continue
         _ = Task.WhenAny(emailTask, Task.Delay(3000));
 
-        // Generate tokens
-        var accessToken = _tokenService.GenerateAccessToken(user.Id, request.Email);
-        var refreshToken = _tokenService.GenerateRefreshToken();
-
-        _logger.LogInformation("User registered successfully: {Email}", request.Email);
+        _logger.LogInformation("User registered successfully: {Email}. Verification required.", request.Email);
 
         return OperationResult.Success(new AuthResponse
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
+            AccessToken = string.Empty,
+            RefreshToken = string.Empty,
+            ExpiresAt = DateTime.UtcNow,
             User = MapToUserDto(user)
         });
     }
@@ -127,6 +123,9 @@ public class AuthService : IAuthService
 
         if (!user.IsActive)
             return OperationResult.Failure<AuthResponse>("Account is deactivated");
+
+        if (!user.IsEmailVerified)
+            return OperationResult.Failure<AuthResponse>("Please verify your email address before logging in. Check your inbox for the verification link.");
 
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash.HashedValue))
             return OperationResult.Failure<AuthResponse>("Invalid email or password");
