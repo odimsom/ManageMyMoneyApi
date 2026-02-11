@@ -11,6 +11,7 @@ using ManageMyMoney.Infrastructure.Persistence.Seeds;
 using ManageMyMoney.Infrastructure.Persistence.Services;
 using ManageMyMoney.Infrastructure.Shared;
 using ManageMyMoney.Presentation.Api.Middleware;
+using Microsoft.Extensions.FileProviders;
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 var builder = WebApplication.CreateBuilder(args);
@@ -409,6 +410,19 @@ app.UseSwaggerUI(options =>
 
 // Health check endpoint
 app.MapHealthChecks("/health");
+
+// Serve static files from Storage/Files
+var storagePath = Path.Combine(builder.Environment.ContentRootPath, "Storage", "Files");
+if (!Directory.Exists(storagePath))
+{
+    Directory.CreateDirectory(storagePath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(storagePath),
+    RequestPath = "/files"
+});
 
 // Middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();

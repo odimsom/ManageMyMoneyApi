@@ -113,6 +113,29 @@ public class AuthController : BaseApiController
         return HandleResult(result);
     }
 
+    [HttpPost("profile/avatar")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadAvatar(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse.Fail("No file uploaded"));
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(extension))
+            return BadRequest(ApiResponse.Fail("Invalid file type. Only JPG, PNG and GIF are allowed."));
+
+        if (file.Length > 2 * 1024 * 1024) // 2MB limit
+            return BadRequest(ApiResponse.Fail("File size exceeds 2MB limit"));
+
+        using var stream = file.OpenReadStream();
+        var result = await _authService.UploadAvatarAsync(CurrentUserId, stream, file.FileName, file.ContentType);
+        
+        return HandleResult(result);
+    }
+
     [HttpPost("change-password")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]

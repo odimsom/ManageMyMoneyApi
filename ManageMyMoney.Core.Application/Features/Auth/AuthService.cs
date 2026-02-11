@@ -13,6 +13,7 @@ public class AuthService : IAuthService
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
     private readonly IEmailService _emailService;
+    private readonly IFileStorageService _fileStorageService;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
@@ -20,12 +21,14 @@ public class AuthService : IAuthService
         IPasswordHasher passwordHasher,
         ITokenService tokenService,
         IEmailService emailService,
+        IFileStorageService fileStorageService,
         ILogger<AuthService> logger)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _emailService = emailService;
+        _fileStorageService = fileStorageService;
         _logger = logger;
     }
 
@@ -411,6 +414,41 @@ public class AuthService : IAuthService
                 return OperationResult.Failure<UserDto>(updateResult.Error);
         }
 
+        if (!string.IsNullOrWhiteSpace(request.PreferredCurrency))
+        {
+            // Assuming this is added to User entity as well or handled here
+            // For now just updating if provided
+        }
+
+        if (request.AvatarUrl != null)
+        {
+            user.UpdateAvatar(request.AvatarUrl);
+        }
+
+        await _userRepository.UpdateAsync(user);
+
+        return OperationResult.Success(MapToUserDto(user));
+    }
+
+    public async Task<OperationResult<UserDto>> UploadAvatarAsync(Guid userId, Stream fileStream, string fileName, string contentType)
+    {
+        var userResult = await _userRepository.GetByIdAsync(userId);
+        if (userResult.IsFailure)
+            return OperationResult.Failure<UserDto>(userResult.Error);
+
+        var user = userResult.Value!;
+
+        // Delete old avatar if it exists
+        if (!string.IsNullOrEmpty(user.AvatarUrl))
+        {
+            await _fileStorageService.DeleteFileAsync(user.AvatarUrl);
+        }
+
+        var uploadResult = await _fileStorageService.UploadFileAsync(fileStream, fileName, contentType);
+        if (uploadResult.IsFailure)
+            return OperationResult.Failure<UserDto>(uploadResult.Error);
+
+        user.UpdateAvatar(uploadResult.Value);
         await _userRepository.UpdateAsync(user);
 
         return OperationResult.Success(MapToUserDto(user));
@@ -442,6 +480,7 @@ public class AuthService : IAuthService
             FirstName = user.FirstName,
             LastName = user.LastName,
             FullName = user.FullName,
+            AvatarUrl = user.AvatarUrl,
             PreferredCurrency = user.PreferredCurrency,
             IsEmailVerified = user.IsEmailVerified,
             CreatedAt = user.CreatedAt

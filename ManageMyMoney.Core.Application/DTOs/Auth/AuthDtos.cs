@@ -63,6 +63,7 @@ public record UserDto
     public required string FirstName { get; init; }
     public string? LastName { get; init; }
     public string? FullName { get; init; }
+    public string? AvatarUrl { get; init; }
     public required string PreferredCurrency { get; init; }
     public bool IsEmailVerified { get; init; }
     public DateTime CreatedAt { get; init; }
@@ -74,4 +75,5 @@ public record UpdateUserProfileRequest
     public string? LastName { get; init; }
     public string? TimeZone { get; init; }
     public string? PreferredCurrency { get; init; }
+    public string? AvatarUrl { get; init; }
 }

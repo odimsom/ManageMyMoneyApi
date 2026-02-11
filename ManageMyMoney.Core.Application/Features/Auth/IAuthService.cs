@@ -16,5 +16,6 @@ public interface IAuthService
     Task<OperationResult> ResendVerificationEmailAsync(Guid userId, string verificationUrl);
     Task<OperationResult<UserDto>> GetCurrentUserAsync(Guid userId);
     Task<OperationResult<UserDto>> UpdateProfileAsync(Guid userId, UpdateUserProfileRequest request);
+    Task<OperationResult<UserDto>> UploadAvatarAsync(Guid userId, Stream fileStream, string fileName, string contentType);
     Task<OperationResult> DeactivateAccountAsync(Guid userId);
 }
