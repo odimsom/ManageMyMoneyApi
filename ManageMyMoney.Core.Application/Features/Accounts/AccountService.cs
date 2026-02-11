@@ -243,12 +243,12 @@ public class AccountService : IAccountService
 
             // Obtener cuenta origen
             var fromAccountResult = await _accountRepository.GetByIdAsync(request.FromAccountId);
-            if (!fromAccountResult.IsSuccess || fromAccountResult.Value.UserId != userId)
+            if (!fromAccountResult.IsSuccess || fromAccountResult.Value == null || fromAccountResult.Value.UserId != userId)
                 return OperationResult.Failure<TransferResponse>("Source account not found");
 
             // Obtener cuenta destino
             var toAccountResult = await _accountRepository.GetByIdAsync(request.ToAccountId);
-            if (!toAccountResult.IsSuccess || toAccountResult.Value.UserId != userId)
+            if (!toAccountResult.IsSuccess || toAccountResult.Value == null || toAccountResult.Value.UserId != userId)
                 return OperationResult.Failure<TransferResponse>("Destination account not found");
 
             var fromAccount = fromAccountResult.Value;
@@ -256,7 +256,7 @@ public class AccountService : IAccountService
 
             // Crear objeto Money para el monto
             var amountResult = Money.Create(request.Amount, fromAccount.Currency);
-            if (!amountResult.IsSuccess)
+            if (!amountResult.IsSuccess || amountResult.Value == null)
                 return OperationResult.Failure<TransferResponse>(amountResult.Error);
 
             // Validar que las monedas coincidan
@@ -318,7 +318,7 @@ public class AccountService : IAccountService
         }
     }
 
-    public async Task<OperationResult<IEnumerable<TransferResponse>>> GetTransfersAsync(Guid userId, DateTime? fromDate, DateTime? toDate)
+    public Task<OperationResult<IEnumerable<TransferResponse>>> GetTransfersAsync(Guid userId, DateTime? fromDate, DateTime? toDate)
     {
         try
         {
@@ -326,33 +326,33 @@ public class AccountService : IAccountService
             
             // TODO: Implementar cuando se cree el repositorio de AccountTransaction
             var emptyList = Enumerable.Empty<TransferResponse>();
-            return OperationResult.Success(emptyList);
+            return Task.FromResult(OperationResult.Success(emptyList));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting transfers for user {UserId}", userId);
-            return OperationResult.Failure<IEnumerable<TransferResponse>>("An error occurred while retrieving transfers");
+            return Task.FromResult(OperationResult.Failure<IEnumerable<TransferResponse>>("An error occurred while retrieving transfers"));
         }
     }
 
     // Payment Methods (placeholders until PaymentMethod repository is implemented)
-    public async Task<OperationResult<PaymentMethodResponse>> CreatePaymentMethodAsync(Guid userId, CreatePaymentMethodRequest request)
+    public Task<OperationResult<PaymentMethodResponse>> CreatePaymentMethodAsync(Guid userId, CreatePaymentMethodRequest request)
     {
         try
         {
             _logger.LogInformation("Creating payment method for user {UserId}", userId);
             
             // TODO: Implementar cuando se cree el repositorio de PaymentMethod
-            return OperationResult.Failure<PaymentMethodResponse>("Payment method functionality not yet available");
+            return Task.FromResult(OperationResult.Failure<PaymentMethodResponse>("Payment method functionality not yet available"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating payment method for user {UserId}", userId);
-            return OperationResult.Failure<PaymentMethodResponse>("An error occurred while creating the payment method");
+            return Task.FromResult(OperationResult.Failure<PaymentMethodResponse>("An error occurred while creating the payment method"));
         }
     }
 
-    public async Task<OperationResult<IEnumerable<PaymentMethodResponse>>> GetPaymentMethodsAsync(Guid userId)
+    public Task<OperationResult<IEnumerable<PaymentMethodResponse>>> GetPaymentMethodsAsync(Guid userId)
     {
         try
         {
@@ -360,65 +360,65 @@ public class AccountService : IAccountService
             
             // TODO: Implementar cuando se cree el repositorio de PaymentMethod
             var emptyList = Enumerable.Empty<PaymentMethodResponse>();
-            return OperationResult.Success(emptyList);
+            return Task.FromResult(OperationResult.Success(emptyList));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting payment methods for user {UserId}", userId);
-            return OperationResult.Failure<IEnumerable<PaymentMethodResponse>>("An error occurred while retrieving payment methods");
+            return Task.FromResult(OperationResult.Failure<IEnumerable<PaymentMethodResponse>>("An error occurred while retrieving payment methods"));
         }
     }
 
-    public async Task<OperationResult> SetDefaultPaymentMethodAsync(Guid userId, Guid paymentMethodId)
+    public Task<OperationResult> SetDefaultPaymentMethodAsync(Guid userId, Guid paymentMethodId)
     {
         try
         {
             _logger.LogInformation("Setting default payment method {PaymentMethodId} for user {UserId}", paymentMethodId, userId);
             
             // TODO: Implementar cuando se cree el repositorio de PaymentMethod
-            return OperationResult.Failure("Payment method functionality not yet available");
+            return Task.FromResult(OperationResult.Failure("Payment method functionality not yet available"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error setting default payment method for user {UserId}", userId);
-            return OperationResult.Failure("An error occurred while setting the default payment method");
+            return Task.FromResult(OperationResult.Failure("An error occurred while setting the default payment method"));
         }
     }
 
-    public async Task<OperationResult> DeletePaymentMethodAsync(Guid userId, Guid paymentMethodId)
+    public Task<OperationResult> DeletePaymentMethodAsync(Guid userId, Guid paymentMethodId)
     {
         try
         {
             _logger.LogInformation("Deleting payment method {PaymentMethodId} for user {UserId}", paymentMethodId, userId);
             
             // TODO: Implementar cuando se cree el repositorio de PaymentMethod
-            return OperationResult.Failure("Payment method functionality not yet available");
+            return Task.FromResult(OperationResult.Failure("Payment method functionality not yet available"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting payment method for user {UserId}", userId);
-            return OperationResult.Failure("An error occurred while deleting the payment method");
+            return Task.FromResult(OperationResult.Failure("An error occurred while deleting the payment method"));
         }
     }
 
     // Credit Cards (placeholders until CreditCard repository is implemented)
-    public async Task<OperationResult<CreditCardResponse>> CreateCreditCardAsync(Guid userId, CreateCreditCardRequest request)
+    public Task<OperationResult<CreditCardResponse>> CreateCreditCardAsync(Guid userId, CreateCreditCardRequest request)
     {
         try
         {
             _logger.LogInformation("Creating credit card for account {AccountId}, user {UserId}", request.AccountId, userId);
             
             // TODO: Implementar cuando se cree el repositorio de CreditCard
-            return OperationResult.Failure<CreditCardResponse>("Credit card functionality not yet available");
+            return Task.FromResult(OperationResult.Failure<CreditCardResponse>("Credit card functionality not yet available"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating credit card for user {UserId}", userId);
-            return OperationResult.Failure<CreditCardResponse>("An error occurred while creating the credit card");
+            return Task.FromResult(OperationResult.Failure<CreditCardResponse>("An error occurred while creating the credit card"));
         }
     }
 
-    public async Task<OperationResult<IEnumerable<CreditCardResponse>>> GetCreditCardsAsync(Guid userId)
+    public Task<OperationResult<IEnumerable<CreditCardResponse>>> GetCreditCardsAsync(Guid userId)
     {
         try
         {
@@ -426,12 +426,12 @@ public class AccountService : IAccountService
             
             // TODO: Implementar cuando se cree el repositorio de CreditCard
             var emptyList = Enumerable.Empty<CreditCardResponse>();
-            return OperationResult.Success(emptyList);
+            return Task.FromResult(OperationResult.Success(emptyList));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting credit cards for user {UserId}", userId);
-            return OperationResult.Failure<IEnumerable<CreditCardResponse>>("An error occurred while retrieving credit cards");
+            return Task.FromResult(OperationResult.Failure<IEnumerable<CreditCardResponse>>("An error occurred while retrieving credit cards"));
         }
     }
 

@@ -14,6 +14,10 @@ using ManageMyMoney.Presentation.Api.Middleware;
 using Microsoft.Extensions.FileProviders;
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+
+// Enable legacy timestamp behavior for Npgsql to avoid DateTime Kind=Unspecified errors with timestamptz
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -519,7 +523,7 @@ static async Task<bool> CheckCriticalTablesExistAsync(ManageMyMoneyContext conte
     {
         try
         {
-            await context.Database.ExecuteSqlRawAsync($"SELECT 1 FROM \"{table}\" LIMIT 1");
+            await context.Database.ExecuteSqlAsync($"SELECT 1 FROM \"{table}\" LIMIT 1");
             existingTables++;
             logger.LogInformation("✅ Table exists: {TableName}", table);
         }

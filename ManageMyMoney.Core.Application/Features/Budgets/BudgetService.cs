@@ -47,7 +47,7 @@ public class BudgetService : IBudgetService
                 request.AlertsEnabled
             );
 
-            if (!createResult.IsSuccess)
+            if (!createResult.IsSuccess || createResult.Value == null)
                 return OperationResult.Failure<BudgetResponse>(createResult.Error);
 
             var budget = createResult.Value;
@@ -502,10 +502,12 @@ public class BudgetService : IBudgetService
             _logger.LogInformation("Getting contributions for savings goal {GoalId}, user {UserId}", goalId, userId);
             
             var result = await _savingsGoalRepository.GetByIdAsync(goalId);
-            if (!result.IsSuccess) return OperationResult.Failure<IEnumerable<ContributionResponse>>(result.Error);
+            if (!result.IsSuccess || result.Value == null) 
+                return OperationResult.Failure<IEnumerable<ContributionResponse>>(result.Error ?? "Savings goal not found");
 
             var goal = result.Value;
-            if (goal.UserId != userId) return OperationResult.Failure<IEnumerable<ContributionResponse>>("Savings goal not found");
+            if (goal.UserId != userId) 
+                return OperationResult.Failure<IEnumerable<ContributionResponse>>("Savings goal not found");
 
             var responses = goal.Contributions.Select(c => MapToContributionResponse(c, goal.TargetAmount.Currency));
             return OperationResult.Success(responses);

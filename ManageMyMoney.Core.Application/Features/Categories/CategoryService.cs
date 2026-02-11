@@ -262,7 +262,7 @@ public class CategoryService : ICategoryService
 
             // Verificar que la categoria existe y pertenece al usuario
             var getCategoryResult = await _categoryRepository.GetByIdAsync(request.CategoryId);
-            if (!getCategoryResult.IsSuccess)
+            if (!getCategoryResult.IsSuccess || getCategoryResult.Value == null)
                 return OperationResult.Failure<SubcategoryResponse>("Category not found");
 
             var category = getCategoryResult.Value;
@@ -275,6 +275,9 @@ public class CategoryService : ICategoryService
                 return OperationResult.Failure<SubcategoryResponse>(createResult.Error);
 
             // Agregar a la categoria
+            if (createResult.Value == null)
+                return OperationResult.Failure<SubcategoryResponse>("Failed to create subcategory");
+
             var addResult = category.AddSubcategory(createResult.Value);
             if (!addResult.IsSuccess)
                 return OperationResult.Failure<SubcategoryResponse>(addResult.Error);
@@ -363,7 +366,7 @@ public class CategoryService : ICategoryService
         }
     }
 
-    public async Task<OperationResult<IEnumerable<CategoryBudgetResponse>>> GetCategoryBudgetsAsync(Guid userId)
+    public Task<OperationResult<IEnumerable<CategoryBudgetResponse>>> GetCategoryBudgetsAsync(Guid userId)
     {
         try
         {
@@ -372,28 +375,28 @@ public class CategoryService : ICategoryService
             // TODO: Implementar cuando se implemente el repositorio de CategoryBudget
             // Por ahora retornamos una lista vacia
             var emptyList = Enumerable.Empty<CategoryBudgetResponse>();
-            return OperationResult.Success(emptyList);
+            return Task.FromResult(OperationResult.Success(emptyList));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting category budgets for user {UserId}", userId);
-            return OperationResult.Failure<IEnumerable<CategoryBudgetResponse>>("An error occurred while retrieving category budgets");
+            return Task.FromResult(OperationResult.Failure<IEnumerable<CategoryBudgetResponse>>("An error occurred while retrieving category budgets"));
         }
     }
 
-    public async Task<OperationResult<CategoryBudgetResponse>> GetCategoryBudgetAsync(Guid userId, Guid categoryId)
+    public Task<OperationResult<CategoryBudgetResponse>> GetCategoryBudgetAsync(Guid userId, Guid categoryId)
     {
         try
         {
             _logger.LogInformation("Getting category budget for category {CategoryId}, user {UserId}", categoryId, userId);
             
             // TODO: Implementar cuando se implemente el repositorio de CategoryBudget
-            return OperationResult.Failure<CategoryBudgetResponse>("Category budget functionality not yet available");
+            return Task.FromResult(OperationResult.Failure<CategoryBudgetResponse>("Category budget functionality not yet available"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting category budget for category {CategoryId}, user {UserId}", categoryId, userId);
-            return OperationResult.Failure<CategoryBudgetResponse>("An error occurred while retrieving the category budget");
+            return Task.FromResult(OperationResult.Failure<CategoryBudgetResponse>("An error occurred while retrieving the category budget"));
         }
     }
 
@@ -422,7 +425,7 @@ public class CategoryService : ICategoryService
                     true // isDefault
                 );
 
-                if (!createResult.IsSuccess)
+                if (!createResult.IsSuccess || createResult.Value == null)
                 {
                     _logger.LogWarning("Failed to create default category {CategoryName}: {Error}", 
                         defaultCategory.Name, createResult.Error);

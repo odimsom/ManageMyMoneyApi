@@ -380,15 +380,15 @@ public class ExpenseService : IExpenseService
     public async Task<OperationResult<TagResponse>> CreateTagAsync(Guid userId, CreateExpenseTagRequest request)
     {
         var tagResult = ExpenseTag.Create(request.Name, userId, request.Color);
-        if (tagResult.IsFailure)
+        if (tagResult.IsFailure || tagResult.Value == null)
             return OperationResult.Failure<TagResponse>(tagResult.Error);
 
         // Note: Would need IExpenseTagRepository - simplified for now
         return OperationResult.Success(new TagResponse
         {
-            Id = tagResult.Value!.Id,
-            Name = tagResult.Value!.Name,
-            Color = tagResult.Value!.Color
+            Id = tagResult.Value.Id,
+            Name = tagResult.Value.Name,
+            Color = tagResult.Value.Color
         });
     }
 
@@ -416,10 +416,10 @@ public class ExpenseService : IExpenseService
     public async Task<OperationResult<AttachmentResponse>> AddAttachmentAsync(Guid userId, Guid expenseId, Stream fileStream, string fileName, string contentType)
     {
         var expenseResult = await _expenseRepository.GetByIdAsync(expenseId);
-        if (expenseResult.IsFailure)
-            return OperationResult.Failure<AttachmentResponse>(expenseResult.Error);
+        if (expenseResult.IsFailure || expenseResult.Value == null)
+            return OperationResult.Failure<AttachmentResponse>(expenseResult.Error ?? "Expense not found");
 
-        if (expenseResult.Value!.UserId != userId)
+        if (expenseResult.Value.UserId != userId)
             return OperationResult.Failure<AttachmentResponse>("Expense not found");
 
         var uploadResult = await _fileStorageService.UploadFileAsync(fileStream, fileName, contentType);
@@ -433,11 +433,11 @@ public class ExpenseService : IExpenseService
             contentType,
             fileStream.Length);
 
-        if (attachmentResult.IsFailure)
+        if (attachmentResult.IsFailure || attachmentResult.Value == null)
             return OperationResult.Failure<AttachmentResponse>(attachmentResult.Error);
 
-        expenseResult.Value!.AddAttachment(attachmentResult.Value!);
-        await _expenseRepository.UpdateAsync(expenseResult.Value!);
+        expenseResult.Value.AddAttachment(attachmentResult.Value);
+        await _expenseRepository.UpdateAsync(expenseResult.Value);
 
         return OperationResult.Success(new AttachmentResponse
         {
@@ -474,7 +474,7 @@ public class ExpenseService : IExpenseService
             request.EndDate,
             request.Description);
 
-        if (result.IsFailure)
+        if (result.IsFailure || result.Value == null)
             return OperationResult.Failure<RecurringExpenseResponse>(result.Error);
 
         // Would need IRecurringExpenseRepository

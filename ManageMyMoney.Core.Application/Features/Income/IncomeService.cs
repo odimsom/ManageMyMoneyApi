@@ -312,14 +312,14 @@ public class IncomeService : IIncomeService
         return await _incomeSourceRepository.DeleteAsync(sourceId);
     }
 
-    public async Task<OperationResult<IncomeResponse>> CreateRecurringIncomeAsync(Guid userId, CreateRecurringIncomeRequest request)
+    public Task<OperationResult<IncomeResponse>> CreateRecurringIncomeAsync(Guid userId, CreateRecurringIncomeRequest request)
     {
-        return OperationResult.Failure<IncomeResponse>("Recurring income implementation pending");
+        return Task.FromResult(OperationResult.Failure<IncomeResponse>("Recurring income implementation pending"));
     }
 
-    public async Task<OperationResult<IEnumerable<IncomeResponse>>> GetRecurringIncomesAsync(Guid userId)
+    public Task<OperationResult<IEnumerable<IncomeResponse>>> GetRecurringIncomesAsync(Guid userId)
     {
-        return OperationResult.Success<IEnumerable<IncomeResponse>>(Enumerable.Empty<IncomeResponse>());
+        return Task.FromResult(OperationResult.Success<IEnumerable<IncomeResponse>>(Enumerable.Empty<IncomeResponse>()));
     }
 
     public async Task<OperationResult<byte[]>> ExportToExcelAsync(Guid userId, DateTime fromDate, DateTime toDate)
@@ -329,8 +329,8 @@ public class IncomeService : IIncomeService
             return OperationResult.Failure<byte[]>(dateRangeResult.Error);
 
         var incomesResult = await _incomeRepository.GetByUserAndDateRangeAsync(userId, dateRangeResult.Value!);
-        if (incomesResult.IsFailure)
-            return OperationResult.Failure<byte[]>(incomesResult.Error);
+        if (incomesResult.IsFailure || incomesResult.Value == null)
+            return OperationResult.Failure<byte[]>(incomesResult.Error ?? "Incomes not found");
 
         var exportData = incomesResult.Value!.Select(i => new
         {
@@ -357,9 +357,9 @@ public class IncomeService : IIncomeService
             Description = income.Description,
             Date = income.Date,
             IncomeSourceId = income.IncomeSourceId,
-            IncomeSourceName = source.IsSuccess ? source.Value!.Name : "Unknown",
+            IncomeSourceName = (source.IsSuccess && source.Value != null) ? source.Value.Name : "Unknown",
             AccountId = income.AccountId,
-            AccountName = account.IsSuccess ? account.Value!.Name : "Unknown",
+            AccountName = (account.IsSuccess && account.Value != null) ? account.Value.Name : "Unknown",
             Notes = income.Notes,
             IsRecurring = income.IsRecurring,
             CreatedAt = income.CreatedAt

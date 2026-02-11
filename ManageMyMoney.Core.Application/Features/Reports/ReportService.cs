@@ -480,24 +480,24 @@ public class ReportService : IReportService
         }
     }
 
-    public async Task<OperationResult<byte[]>> ExportReportAsync(Guid userId, ExportReportRequest request)
+    public Task<OperationResult<byte[]>> ExportReportAsync(Guid userId, ExportReportRequest request)
     {
         try
         {
             _logger.LogInformation("Exporting report for user {UserId}, type: {ReportType}, format: {ExportFormat}", 
                 userId, request.ReportType, request.ExportFormat);
-
+ 
             // TODO: Implementar exportación real (CSV, PDF, Excel)
-            return OperationResult.Failure<byte[]>("Report export functionality not yet available");
+            return Task.FromResult(OperationResult.Failure<byte[]>("Report export functionality not yet available"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error exporting report for user {UserId}", userId);
-            return OperationResult.Failure<byte[]>("An error occurred while exporting the report");
+            return Task.FromResult(OperationResult.Failure<byte[]>("An error occurred while exporting the report"));
         }
     }
 
-    public async Task<OperationResult> SendMonthlyReportEmailAsync(Guid userId, int year, int month)
+    public Task<OperationResult> SendMonthlyReportEmailAsync(Guid userId, int year, int month)
     {
         try
         {
@@ -505,12 +505,13 @@ public class ReportService : IReportService
                 userId, year, month);
 
             // TODO: Implementar envío de email con el reporte mensual
-            return OperationResult.Failure("Email report functionality not yet available");
+            return Task.FromResult(OperationResult.Failure("Email report functionality not yet available"));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending monthly report email for user {UserId}", userId);
-            return OperationResult.Failure("An error occurred while sending the monthly report email");
+            _logger.LogError(ex, "Error sending monthly report email for user {UserId}, year {Year}, month {Month}", 
+                userId, year, month);
+            return Task.FromResult(OperationResult.Failure("An error occurred while sending the monthly report email"));
         }
     }
 }

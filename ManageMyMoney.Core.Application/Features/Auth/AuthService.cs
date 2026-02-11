@@ -60,6 +60,10 @@ public class AuthService : IAuthService
 
         var user = userResult.Value!;
 
+        // Create and save verification token
+        var verificationToken = _tokenService.GenerateRandomToken();
+        var tokenResult = EmailVerificationToken.Create(verificationToken, user.Id, 48); // 48 hours expiration
+
         if (tokenResult.IsFailure || tokenResult.Value == null)
             return OperationResult.Failure<AuthResponse>(tokenResult.Error);
 
