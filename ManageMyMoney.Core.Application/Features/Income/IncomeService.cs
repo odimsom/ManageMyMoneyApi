@@ -55,10 +55,10 @@ public class IncomeService : IIncomeService
             userId,
             request.Notes);
 
-        if (incomeResult.IsFailure)
+        if (incomeResult.IsFailure || incomeResult.Value == null)
             return OperationResult.Failure<IncomeResponse>(incomeResult.Error);
 
-        var addResult = await _incomeRepository.AddAsync(incomeResult.Value!);
+        var addResult = await _incomeRepository.AddAsync(incomeResult.Value);
         if (addResult.IsFailure)
             return OperationResult.Failure<IncomeResponse>(addResult.Error);
 
@@ -76,19 +76,19 @@ public class IncomeService : IIncomeService
 
         _logger.LogInformation("Income created successfully for user {UserId}", userId);
 
-        return OperationResult.Success(await MapToResponseAsync(incomeResult.Value!));
+        return OperationResult.Success(await MapToResponseAsync(incomeResult.Value));
     }
 
     public async Task<OperationResult<IncomeResponse>> GetIncomeByIdAsync(Guid userId, Guid incomeId)
     {
         var result = await _incomeRepository.GetByIdAsync(incomeId);
-        if (result.IsFailure)
-            return OperationResult.Failure<IncomeResponse>(result.Error);
+        if (result.IsFailure || result.Value == null)
+            return OperationResult.Failure<IncomeResponse>(result.Error ?? "Income not found");
 
-        if (result.Value!.UserId != userId)
+        if (result.Value.UserId != userId)
             return OperationResult.Failure<IncomeResponse>("Income not found");
 
-        return OperationResult.Success(await MapToResponseAsync(result.Value!));
+        return OperationResult.Success(await MapToResponseAsync(result.Value));
     }
 
     public async Task<OperationResult<PaginatedResponse<IncomeResponse>>> GetIncomesAsync(Guid userId, DateRangeRequest? dateRangeRequest, int pageNumber = 1, int pageSize = 20)
@@ -102,16 +102,16 @@ public class IncomeService : IIncomeService
                 return OperationResult.Failure<PaginatedResponse<IncomeResponse>>(dateRangeResult.Error);
 
             var result = await _incomeRepository.GetByUserAndDateRangeAsync(userId, dateRangeResult.Value!);
-            if (result.IsFailure)
-                return OperationResult.Failure<PaginatedResponse<IncomeResponse>>(result.Error);
-            incomes = result.Value!;
+            if (result.IsFailure || result.Value == null)
+                return OperationResult.Failure<PaginatedResponse<IncomeResponse>>(result.Error ?? "Incomes fail");
+            incomes = result.Value;
         }
         else
         {
             var result = await _incomeRepository.GetAllByUserAsync(userId);
-            if (result.IsFailure)
-                return OperationResult.Failure<PaginatedResponse<IncomeResponse>>(result.Error);
-            incomes = result.Value!;
+            if (result.IsFailure || result.Value == null)
+                return OperationResult.Failure<PaginatedResponse<IncomeResponse>>(result.Error ?? "Incomes fail");
+            incomes = result.Value;
         }
 
         var totalCount = incomes.Count();
@@ -140,10 +140,10 @@ public class IncomeService : IIncomeService
     public async Task<OperationResult<IncomeResponse>> UpdateIncomeAsync(Guid userId, Guid incomeId, UpdateIncomeRequest request)
     {
         var incomeResult = await _incomeRepository.GetByIdAsync(incomeId);
-        if (incomeResult.IsFailure)
-            return OperationResult.Failure<IncomeResponse>(incomeResult.Error);
+        if (incomeResult.IsFailure || incomeResult.Value == null)
+            return OperationResult.Failure<IncomeResponse>(incomeResult.Error ?? "Income not found");
 
-        var income = incomeResult.Value!;
+        var income = incomeResult.Value;
         if (income.UserId != userId)
             return OperationResult.Failure<IncomeResponse>("Income not found");
 
@@ -190,10 +190,10 @@ public class IncomeService : IIncomeService
     public async Task<OperationResult> DeleteIncomeAsync(Guid userId, Guid incomeId)
     {
         var incomeResult = await _incomeRepository.GetByIdAsync(incomeId);
-        if (incomeResult.IsFailure)
-            return OperationResult.Failure(incomeResult.Error);
+        if (incomeResult.IsFailure || incomeResult.Value == null)
+            return OperationResult.Failure(incomeResult.Error ?? "Income not found");
 
-        if (incomeResult.Value!.UserId != userId)
+        if (incomeResult.Value.UserId != userId)
             return OperationResult.Failure("Income not found");
 
         return await _incomeRepository.DeleteAsync(incomeId);
@@ -209,10 +209,10 @@ public class IncomeService : IIncomeService
             return OperationResult.Failure<IncomeSummaryResponse>(dateRangeResult.Error);
 
         var incomesResult = await _incomeRepository.GetByUserAndDateRangeAsync(userId, dateRangeResult.Value!);
-        if (incomesResult.IsFailure)
-            return OperationResult.Failure<IncomeSummaryResponse>(incomesResult.Error);
+        if (incomesResult.IsFailure || incomesResult.Value == null)
+            return OperationResult.Failure<IncomeSummaryResponse>(incomesResult.Error ?? "Incomes fail");
 
-        var incomes = incomesResult.Value!.ToList();
+        var incomes = incomesResult.Value.ToList();
         
         if (!incomes.Any())
         {
@@ -263,32 +263,32 @@ public class IncomeService : IIncomeService
     public async Task<OperationResult<IncomeSourceResponse>> CreateIncomeSourceAsync(Guid userId, CreateIncomeSourceRequest request)
     {
         var sourceResult = IncomeSource.Create(request.Name, userId, request.Description, request.Icon, request.Color);
-        if (sourceResult.IsFailure)
+        if (sourceResult.IsFailure || sourceResult.Value == null)
             return OperationResult.Failure<IncomeSourceResponse>(sourceResult.Error);
-
-        var addResult = await _incomeSourceRepository.AddAsync(sourceResult.Value!);
+ 
+        var addResult = await _incomeSourceRepository.AddAsync(sourceResult.Value);
         if (addResult.IsFailure)
             return OperationResult.Failure<IncomeSourceResponse>(addResult.Error);
-
-        return OperationResult.Success(MapToSourceResponse(sourceResult.Value!));
+ 
+        return OperationResult.Success(MapToSourceResponse(sourceResult.Value));
     }
 
     public async Task<OperationResult<IEnumerable<IncomeSourceResponse>>> GetIncomeSourcesAsync(Guid userId)
     {
         var result = await _incomeSourceRepository.GetAllByUserAsync(userId);
-        if (result.IsFailure)
-            return OperationResult.Failure<IEnumerable<IncomeSourceResponse>>(result.Error);
-
-        return OperationResult.Success(result.Value!.Select(MapToSourceResponse));
+        if (result.IsFailure || result.Value == null)
+            return OperationResult.Failure<IEnumerable<IncomeSourceResponse>>(result.Error ?? "Sources not found");
+ 
+        return OperationResult.Success(result.Value.Select(MapToSourceResponse));
     }
 
     public async Task<OperationResult<IncomeSourceResponse>> UpdateIncomeSourceAsync(Guid userId, Guid sourceId, CreateIncomeSourceRequest request)
     {
         var sourceResult = await _incomeSourceRepository.GetByIdAsync(sourceId);
-        if (sourceResult.IsFailure)
-            return OperationResult.Failure<IncomeSourceResponse>(sourceResult.Error);
-
-        if (sourceResult.Value!.UserId != userId)
+        if (sourceResult.IsFailure || sourceResult.Value == null)
+            return OperationResult.Failure<IncomeSourceResponse>(sourceResult.Error ?? "Income source not found");
+ 
+        if (sourceResult.Value.UserId != userId)
             return OperationResult.Failure<IncomeSourceResponse>("Income source not found");
 
         sourceResult.Value.Update(request.Name, request.Description, request.Icon, request.Color);
@@ -303,10 +303,10 @@ public class IncomeService : IIncomeService
     public async Task<OperationResult> DeleteIncomeSourceAsync(Guid userId, Guid sourceId)
     {
         var sourceResult = await _incomeSourceRepository.GetByIdAsync(sourceId);
-        if (sourceResult.IsFailure)
-            return OperationResult.Failure(sourceResult.Error);
-
-        if (sourceResult.Value!.UserId != userId)
+        if (sourceResult.IsFailure || sourceResult.Value == null)
+            return OperationResult.Failure(sourceResult.Error ?? "Income source not found");
+ 
+        if (sourceResult.Value.UserId != userId)
             return OperationResult.Failure("Income source not found");
 
         return await _incomeSourceRepository.DeleteAsync(sourceId);

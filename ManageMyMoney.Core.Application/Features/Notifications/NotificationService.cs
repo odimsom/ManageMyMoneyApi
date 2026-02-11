@@ -156,10 +156,7 @@ public class NotificationService : INotificationService
         if (result.Value!.UserId != userId)
             return OperationResult.Failure("Alert not found");
 
-        var acknowledgeResult = result.Value.Acknowledge();
-        if (acknowledgeResult.IsFailure)
-            return acknowledgeResult;
-
+        result.Value.Acknowledge();
         return await _alertRepository.UpdateAsync(result.Value);
     }
 
@@ -247,7 +244,7 @@ public class NotificationService : INotificationService
             Id = alert.Id,
             Title = alert.Title,
             Message = alert.Message,
-            Type = alert.Type.ToString(),
+            AlertType = alert.AlertType,
             IsAcknowledged = alert.IsAcknowledged,
             CreatedAt = alert.CreatedAt,
             AcknowledgedAt = alert.AcknowledgedAt

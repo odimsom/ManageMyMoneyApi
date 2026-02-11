@@ -50,7 +50,7 @@ public class CategoryService : ICategoryService
                 request.Color
             );
 
-            if (!createResult.IsSuccess)
+            if (!createResult.IsSuccess || createResult.Value == null)
                 return OperationResult.Failure<CategoryResponse>(createResult.Error);
 
             // Guardar en el repositorio
@@ -77,8 +77,8 @@ public class CategoryService : ICategoryService
             _logger.LogInformation("Getting category {CategoryId} for user {UserId}", categoryId, userId);
 
             var result = await _categoryRepository.GetByIdAsync(categoryId);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<CategoryResponse>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<CategoryResponse>(result.Error ?? "Category not found");
 
             if (result.Value.UserId != userId)
                 return OperationResult.Failure<CategoryResponse>("Category not found");
@@ -113,8 +113,8 @@ public class CategoryService : ICategoryService
                 result = await _categoryRepository.GetAllByUserAsync(userId);
             }
 
-            if (!result.IsSuccess)
-                return OperationResult.Failure<IEnumerable<CategoryResponse>>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<IEnumerable<CategoryResponse>>(result.Error ?? "Categories not found");
 
             var responses = result.Value.Select(MapToResponse);
             return OperationResult.Success(responses);
@@ -133,8 +133,8 @@ public class CategoryService : ICategoryService
             _logger.LogInformation("Getting expense categories for user {UserId}", userId);
 
             var result = await _categoryRepository.GetByTransactionTypeAsync(userId, TransactionType.Expense);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<IEnumerable<CategoryResponse>>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<IEnumerable<CategoryResponse>>(result.Error ?? "Expense categories not found");
 
             var responses = result.Value.Select(MapToResponse);
             return OperationResult.Success(responses);
@@ -153,8 +153,8 @@ public class CategoryService : ICategoryService
             _logger.LogInformation("Getting income categories for user {UserId}", userId);
 
             var result = await _categoryRepository.GetByTransactionTypeAsync(userId, TransactionType.Income);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<IEnumerable<CategoryResponse>>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<IEnumerable<CategoryResponse>>(result.Error ?? "Income categories not found");
 
             var responses = result.Value.Select(MapToResponse);
             return OperationResult.Success(responses);
@@ -174,8 +174,8 @@ public class CategoryService : ICategoryService
 
             // Obtener categoria existente
             var getCategoryResult = await _categoryRepository.GetByIdAsync(categoryId);
-            if (!getCategoryResult.IsSuccess)
-                return OperationResult.Failure<CategoryResponse>(getCategoryResult.Error);
+            if (!getCategoryResult.IsSuccess || getCategoryResult.Value == null)
+                return OperationResult.Failure<CategoryResponse>(getCategoryResult.Error ?? "Category not found");
 
             var category = getCategoryResult.Value;
             if (category.UserId != userId)
@@ -227,8 +227,8 @@ public class CategoryService : ICategoryService
 
             // Obtener categoria existente
             var getCategoryResult = await _categoryRepository.GetByIdAsync(categoryId);
-            if (!getCategoryResult.IsSuccess)
-                return OperationResult.Failure(getCategoryResult.Error);
+            if (!getCategoryResult.IsSuccess || getCategoryResult.Value == null)
+                return OperationResult.Failure(getCategoryResult.Error ?? "Category not found");
 
             var category = getCategoryResult.Value;
             if (category.UserId != userId)
@@ -304,7 +304,7 @@ public class CategoryService : ICategoryService
 
             // Verificar que la categoria existe y pertenece al usuario
             var getCategoryResult = await _categoryRepository.GetByIdAsync(categoryId);
-            if (!getCategoryResult.IsSuccess)
+            if (!getCategoryResult.IsSuccess || getCategoryResult.Value == null)
                 return OperationResult.Failure<IEnumerable<SubcategoryResponse>>("Category not found");
 
             var category = getCategoryResult.Value;
@@ -332,8 +332,8 @@ public class CategoryService : ICategoryService
 
             // Obtener todas las categorias del usuario para encontrar la subcategoria
             var getCategoriesResult = await _categoryRepository.GetAllByUserAsync(userId);
-            if (!getCategoriesResult.IsSuccess)
-                return OperationResult.Failure(getCategoriesResult.Error);
+            if (!getCategoriesResult.IsSuccess || getCategoriesResult.Value == null)
+                return OperationResult.Failure(getCategoriesResult.Error ?? "Categories not found");
 
             var category = getCategoriesResult.Value
                 .FirstOrDefault(c => c.Subcategories.Any(s => s.Id == subcategoryId));
@@ -405,8 +405,8 @@ public class CategoryService : ICategoryService
 
             // Obtener categorias por defecto
             var defaultCategoriesResult = await _categoryRepository.GetDefaultCategoriesAsync();
-            if (!defaultCategoriesResult.IsSuccess)
-                return OperationResult.Failure(defaultCategoriesResult.Error);
+            if (!defaultCategoriesResult.IsSuccess || defaultCategoriesResult.Value == null)
+                return OperationResult.Failure(defaultCategoriesResult.Error ?? "Default categories not found");
 
             // Crear categorias por defecto para el usuario
             foreach (var defaultCategory in defaultCategoriesResult.Value)

@@ -51,22 +51,19 @@ public class AuthService : IAuthService
             request.LastName,
             request.PreferredCurrency);
 
-        if (userResult.IsFailure)
+        if (userResult.IsFailure || userResult.Value == null)
             return OperationResult.Failure<AuthResponse>(userResult.Error);
 
-        var addResult = await _userRepository.AddAsync(userResult.Value!);
+        var addResult = await _userRepository.AddAsync(userResult.Value);
         if (addResult.IsFailure)
             return OperationResult.Failure<AuthResponse>(addResult.Error);
 
         var user = userResult.Value!;
 
-        // Create and save verification token
-        var verificationToken = _tokenService.GenerateRandomToken();
-        var tokenResult = EmailVerificationToken.Create(verificationToken, user.Id, 48); // 48 hours expiration
-        if (tokenResult.IsFailure)
+        if (tokenResult.IsFailure || tokenResult.Value == null)
             return OperationResult.Failure<AuthResponse>(tokenResult.Error);
 
-        var emailVerificationToken = tokenResult.Value!;
+        var emailVerificationToken = tokenResult.Value;
         var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(emailVerificationToken);
         if (saveTokenResult.IsFailure)
             _logger.LogWarning("Failed to save email verification token for {Email}: {Error}", request.Email, saveTokenResult.Error);
@@ -119,10 +116,10 @@ public class AuthService : IAuthService
     public async Task<OperationResult<AuthResponse>> LoginAsync(LoginRequest request)
     {
         var userResult = await _userRepository.GetByEmailAsync(request.Email);
-        if (userResult.IsFailure)
+        if (userResult.IsFailure || userResult.Value == null)
             return OperationResult.Failure<AuthResponse>("Invalid email or password");
 
-        var user = userResult.Value!;
+        var user = userResult.Value;
 
         if (!user.IsActive)
             return OperationResult.Failure<AuthResponse>("Account is deactivated");
@@ -199,10 +196,10 @@ public class AuthService : IAuthService
         var resetTokenValue = _tokenService.GenerateRandomToken();
 
         var tokenResult = PasswordResetToken.Create(resetTokenValue, user.Id, 24);
-        if (tokenResult.IsFailure)
+        if (tokenResult.IsFailure || tokenResult.Value == null)
             return OperationResult.Failure(tokenResult.Error);
 
-        var resetToken = tokenResult.Value!;
+        var resetToken = tokenResult.Value;
         
         var saveTokenResult = await _userRepository.AddPasswordResetTokenAsync(resetToken);
         if (saveTokenResult.IsFailure)
@@ -245,17 +242,17 @@ public class AuthService : IAuthService
 
         // Get and validate reset token
         var tokenResult = await _userRepository.GetValidPasswordResetTokenAsync(request.Token);
-        if (tokenResult.IsFailure)
+        if (tokenResult.IsFailure || tokenResult.Value == null)
             return OperationResult.Failure("Invalid or expired reset token");
 
-        var resetToken = tokenResult.Value!;
+        var resetToken = tokenResult.Value;
 
         // Get user
         var userResult = await _userRepository.GetByIdAsync(resetToken.UserId);
-        if (userResult.IsFailure)
+        if (userResult.IsFailure || userResult.Value == null)
             return OperationResult.Failure("User not found");
 
-        var user = userResult.Value!;
+        var user = userResult.Value;
 
         // Mark token as used
         var markTokenResult = resetToken.MarkAsUsed();
@@ -284,17 +281,17 @@ public class AuthService : IAuthService
 
         // Get and validate verification token
         var tokenResult = await _userRepository.GetValidEmailVerificationTokenAsync(request.Token);
-        if (tokenResult.IsFailure)
+        if (tokenResult.IsFailure || tokenResult.Value == null)
             return OperationResult.Failure("Invalid or expired verification token");
 
-        var verificationToken = tokenResult.Value!;
+        var verificationToken = tokenResult.Value;
 
         // Get user
         var userResult = await _userRepository.GetByIdAsync(verificationToken.UserId);
-        if (userResult.IsFailure)
+        if (userResult.IsFailure || userResult.Value == null)
             return OperationResult.Failure("User not found");
 
-        var user = userResult.Value!;
+        var user = userResult.Value;
 
         // Check if email is already verified
         if (user.IsEmailVerified)
@@ -326,10 +323,10 @@ public class AuthService : IAuthService
 
         // Get user
         var userResult = await _userRepository.GetByIdAsync(userId);
-        if (userResult.IsFailure)
+        if (userResult.IsFailure || userResult.Value == null)
             return OperationResult.Failure("User not found");
 
-        var user = userResult.Value!;
+        var user = userResult.Value;
 
         // Check if email is already verified
         if (user.IsEmailVerified)
@@ -338,10 +335,10 @@ public class AuthService : IAuthService
         // Generate new verification token
         var verificationToken = _tokenService.GenerateRandomToken();
         var tokenResult = EmailVerificationToken.Create(verificationToken, user.Id, 48); // 48 hours expiration
-        if (tokenResult.IsFailure)
+        if (tokenResult.IsFailure || tokenResult.Value == null)
             return OperationResult.Failure(tokenResult.Error);
 
-        var emailVerificationToken = tokenResult.Value!;
+        var emailVerificationToken = tokenResult.Value;
         
         // Save token to database
         var saveTokenResult = await _userRepository.AddEmailVerificationTokenAsync(emailVerificationToken);
@@ -389,19 +386,19 @@ public class AuthService : IAuthService
     public async Task<OperationResult<UserDto>> GetCurrentUserAsync(Guid userId)
     {
         var userResult = await _userRepository.GetByIdAsync(userId);
-        if (userResult.IsFailure)
-            return OperationResult.Failure<UserDto>(userResult.Error);
+        if (userResult.IsFailure || userResult.Value == null)
+            return OperationResult.Failure<UserDto>(userResult.Error ?? "User not found");
 
-        return OperationResult.Success(MapToUserDto(userResult.Value!));
+        return OperationResult.Success(MapToUserDto(userResult.Value));
     }
 
     public async Task<OperationResult<UserDto>> UpdateProfileAsync(Guid userId, UpdateUserProfileRequest request)
     {
         var userResult = await _userRepository.GetByIdAsync(userId);
-        if (userResult.IsFailure)
-            return OperationResult.Failure<UserDto>(userResult.Error);
+        if (userResult.IsFailure || userResult.Value == null)
+            return OperationResult.Failure<UserDto>(userResult.Error ?? "User not found");
 
-        var user = userResult.Value!;
+        var user = userResult.Value;
 
         if (!string.IsNullOrWhiteSpace(request.FirstName))
         {
@@ -433,10 +430,10 @@ public class AuthService : IAuthService
     public async Task<OperationResult<UserDto>> UploadAvatarAsync(Guid userId, Stream fileStream, string fileName, string contentType)
     {
         var userResult = await _userRepository.GetByIdAsync(userId);
-        if (userResult.IsFailure)
-            return OperationResult.Failure<UserDto>(userResult.Error);
+        if (userResult.IsFailure || userResult.Value == null)
+            return OperationResult.Failure<UserDto>(userResult.Error ?? "User not found");
 
-        var user = userResult.Value!;
+        var user = userResult.Value;
 
         // Delete old avatar if it exists
         if (!string.IsNullOrEmpty(user.AvatarUrl))
@@ -457,10 +454,10 @@ public class AuthService : IAuthService
     public async Task<OperationResult> DeactivateAccountAsync(Guid userId)
     {
         var userResult = await _userRepository.GetByIdAsync(userId);
-        if (userResult.IsFailure)
-            return OperationResult.Failure(userResult.Error);
+        if (userResult.IsFailure || userResult.Value == null)
+            return OperationResult.Failure(userResult.Error ?? "User not found");
 
-        var deactivateResult = userResult.Value!.Deactivate();
+        var deactivateResult = userResult.Value.Deactivate();
         if (deactivateResult.IsFailure)
             return deactivateResult;
 

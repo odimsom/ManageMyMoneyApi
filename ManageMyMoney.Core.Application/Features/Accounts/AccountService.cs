@@ -42,7 +42,7 @@ public class AccountService : IAccountService
                 request.IncludeInTotal
             );
 
-            if (!createResult.IsSuccess)
+            if (!createResult.IsSuccess || createResult.Value == null)
                 return OperationResult.Failure<AccountResponse>(createResult.Error);
 
             // Guardar en el repositorio
@@ -69,8 +69,8 @@ public class AccountService : IAccountService
             _logger.LogInformation("Getting account {AccountId} for user {UserId}", accountId, userId);
 
             var result = await _accountRepository.GetByIdAsync(accountId);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<AccountResponse>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<AccountResponse>(result.Error ?? "Account not found");
 
             if (result.Value.UserId != userId)
                 return OperationResult.Failure<AccountResponse>("Account not found");
@@ -92,8 +92,8 @@ public class AccountService : IAccountService
             _logger.LogInformation("Getting accounts for user {UserId}, activeOnly: {ActiveOnly}", userId, activeOnly);
 
             var result = await _accountRepository.GetActiveByUserAsync(userId);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<IEnumerable<AccountResponse>>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<IEnumerable<AccountResponse>>(result.Error ?? "Accounts not found");
 
             var responses = result.Value.Select(MapToResponse);
             return OperationResult.Success(responses);
@@ -113,8 +113,8 @@ public class AccountService : IAccountService
 
             // Obtener cuenta existente
             var getAccountResult = await _accountRepository.GetByIdAsync(accountId);
-            if (!getAccountResult.IsSuccess)
-                return OperationResult.Failure<AccountResponse>(getAccountResult.Error);
+            if (!getAccountResult.IsSuccess || getAccountResult.Value == null)
+                return OperationResult.Failure<AccountResponse>(getAccountResult.Error ?? "Account not found");
 
             var account = getAccountResult.Value;
             if (account.UserId != userId)
@@ -157,8 +157,8 @@ public class AccountService : IAccountService
 
             // Obtener cuenta existente
             var getAccountResult = await _accountRepository.GetByIdAsync(accountId);
-            if (!getAccountResult.IsSuccess)
-                return OperationResult.Failure(getAccountResult.Error);
+            if (!getAccountResult.IsSuccess || getAccountResult.Value == null)
+                return OperationResult.Failure(getAccountResult.Error ?? "Account not found");
 
             var account = getAccountResult.Value;
             if (account.UserId != userId)
@@ -191,8 +191,8 @@ public class AccountService : IAccountService
             _logger.LogInformation("Getting accounts summary for user {UserId}", userId);
 
             var result = await _accountRepository.GetActiveByUserAsync(userId);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<AccountSummaryResponse>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<AccountSummaryResponse>(result.Error ?? "No active accounts found");
 
             var accounts = result.Value.ToList();
             var accountBalances = accounts

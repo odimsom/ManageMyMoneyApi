@@ -58,10 +58,10 @@ public class ExpenseService : IExpenseService
             request.Notes,
             request.Location);
 
-        if (expenseResult.IsFailure)
+        if (expenseResult.IsFailure || expenseResult.Value == null)
             return OperationResult.Failure<ExpenseResponse>(expenseResult.Error);
 
-        var addResult = await _expenseRepository.AddAsync(expenseResult.Value!);
+        var addResult = await _expenseRepository.AddAsync(expenseResult.Value);
         if (addResult.IsFailure)
             return OperationResult.Failure<ExpenseResponse>(addResult.Error);
 
@@ -79,7 +79,7 @@ public class ExpenseService : IExpenseService
 
         _logger.LogInformation("Expense created successfully for user {UserId}", userId);
 
-        return OperationResult.Success(MapToResponse(expenseResult.Value!));
+        return OperationResult.Success(MapToResponse(expenseResult.Value));
     }
 
     public async Task<OperationResult<ExpenseResponse>> CreateQuickExpenseAsync(Guid userId, CreateQuickExpenseRequest request)
@@ -121,13 +121,13 @@ public class ExpenseService : IExpenseService
     public async Task<OperationResult<ExpenseResponse>> GetExpenseByIdAsync(Guid userId, Guid expenseId)
     {
         var result = await _expenseRepository.GetByIdAsync(expenseId);
-        if (result.IsFailure)
-            return OperationResult.Failure<ExpenseResponse>(result.Error);
+        if (result.IsFailure || result.Value == null)
+            return OperationResult.Failure<ExpenseResponse>(result.Error ?? "Expense not found");
 
-        if (result.Value!.UserId != userId)
+        if (result.Value.UserId != userId)
             return OperationResult.Failure<ExpenseResponse>("Expense not found");
 
-        return OperationResult.Success(MapToResponse(result.Value!));
+        return OperationResult.Success(MapToResponse(result.Value));
     }
 
     public async Task<OperationResult<PaginatedResponse<ExpenseResponse>>> GetExpensesAsync(Guid userId, ExpenseFilterRequest filter)
@@ -141,16 +141,16 @@ public class ExpenseService : IExpenseService
         if (dateRange?.IsSuccess == true)
         {
             var result = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRange.Value!);
-            if (result.IsFailure)
-                return OperationResult.Failure<PaginatedResponse<ExpenseResponse>>(result.Error);
-            expenses = result.Value!;
+            if (result.IsFailure || result.Value == null)
+                return OperationResult.Failure<PaginatedResponse<ExpenseResponse>>(result.Error ?? "Expenses fail");
+            expenses = result.Value;
         }
         else
         {
             var result = await _expenseRepository.GetAllByUserAsync(userId);
-            if (result.IsFailure)
-                return OperationResult.Failure<PaginatedResponse<ExpenseResponse>>(result.Error);
-            expenses = result.Value!;
+            if (result.IsFailure || result.Value == null)
+                return OperationResult.Failure<PaginatedResponse<ExpenseResponse>>(result.Error ?? "Expenses fail");
+            expenses = result.Value;
         }
 
         // Apply additional filters
@@ -190,10 +190,10 @@ public class ExpenseService : IExpenseService
     public async Task<OperationResult<ExpenseResponse>> UpdateExpenseAsync(Guid userId, Guid expenseId, UpdateExpenseRequest request)
     {
         var expenseResult = await _expenseRepository.GetByIdAsync(expenseId);
-        if (expenseResult.IsFailure)
-            return OperationResult.Failure<ExpenseResponse>(expenseResult.Error);
+        if (expenseResult.IsFailure || expenseResult.Value == null)
+            return OperationResult.Failure<ExpenseResponse>(expenseResult.Error ?? "Expense not found");
 
-        var expense = expenseResult.Value!;
+        var expense = expenseResult.Value;
         if (expense.UserId != userId)
             return OperationResult.Failure<ExpenseResponse>("Expense not found");
 
@@ -231,10 +231,10 @@ public class ExpenseService : IExpenseService
     public async Task<OperationResult> DeleteExpenseAsync(Guid userId, Guid expenseId)
     {
         var expenseResult = await _expenseRepository.GetByIdAsync(expenseId);
-        if (expenseResult.IsFailure)
-            return OperationResult.Failure(expenseResult.Error);
+        if (expenseResult.IsFailure || expenseResult.Value == null)
+            return OperationResult.Failure(expenseResult.Error ?? "Expense not found");
 
-        if (expenseResult.Value!.UserId != userId)
+        if (expenseResult.Value.UserId != userId)
             return OperationResult.Failure("Expense not found");
 
         return await _expenseRepository.DeleteAsync(expenseId);
@@ -250,10 +250,10 @@ public class ExpenseService : IExpenseService
             return OperationResult.Failure<ExpenseSummaryResponse>(dateRangeResult.Error);
 
         var expensesResult = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRangeResult.Value!);
-        if (expensesResult.IsFailure)
-            return OperationResult.Failure<ExpenseSummaryResponse>(expensesResult.Error);
+        if (expensesResult.IsFailure || expensesResult.Value == null)
+            return OperationResult.Failure<ExpenseSummaryResponse>(expensesResult.Error ?? "Expenses fail");
 
-        var expenses = expensesResult.Value!.ToList();
+        var expenses = expensesResult.Value.ToList();
         
         if (!expenses.Any())
         {
@@ -310,10 +310,10 @@ public class ExpenseService : IExpenseService
             return OperationResult.Failure<IEnumerable<CategoryExpenseSummary>>(dateRangeResult.Error);
 
         var expensesResult = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRangeResult.Value!);
-        if (expensesResult.IsFailure)
-            return OperationResult.Failure<IEnumerable<CategoryExpenseSummary>>(expensesResult.Error);
+        if (expensesResult.IsFailure || expensesResult.Value == null)
+            return OperationResult.Failure<IEnumerable<CategoryExpenseSummary>>(expensesResult.Error ?? "Expenses fail");
 
-        var expenses = expensesResult.Value!.ToList();
+        var expenses = expensesResult.Value.ToList();
         if (!expenses.Any())
             return OperationResult.Success<IEnumerable<CategoryExpenseSummary>>(Enumerable.Empty<CategoryExpenseSummary>());
 
@@ -356,10 +356,10 @@ public class ExpenseService : IExpenseService
             return OperationResult.Failure<IEnumerable<DailyExpenseSummary>>(dateRangeResult.Error);
 
         var expensesResult = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRangeResult.Value!);
-        if (expensesResult.IsFailure)
-            return OperationResult.Failure<IEnumerable<DailyExpenseSummary>>(expensesResult.Error);
+        if (expensesResult.IsFailure || expensesResult.Value == null)
+            return OperationResult.Failure<IEnumerable<DailyExpenseSummary>>(expensesResult.Error ?? "Expenses fail");
 
-        var expenses = expensesResult.Value!.ToList();
+        var expenses = expensesResult.Value.ToList();
         var currency = expenses.FirstOrDefault()?.Amount.Currency ?? "USD";
 
         var dailySummaries = expenses

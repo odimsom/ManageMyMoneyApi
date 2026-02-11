@@ -85,8 +85,8 @@ public class BudgetService : IBudgetService
             _logger.LogInformation("Getting budget {BudgetId} for user {UserId}", budgetId, userId);
 
             var result = await _budgetRepository.GetByIdAsync(budgetId);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<BudgetResponse>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<BudgetResponse>(result.Error ?? "Budget not found");
 
             if (result.Value.UserId != userId)
                 return OperationResult.Failure<BudgetResponse>("Budget not found");
@@ -108,8 +108,8 @@ public class BudgetService : IBudgetService
             _logger.LogInformation("Getting budgets for user {UserId}, activeOnly: {ActiveOnly}", userId, activeOnly);
 
             var result = await _budgetRepository.GetActiveByUserAsync(userId);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<IEnumerable<BudgetResponse>>(result.Error);
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<IEnumerable<BudgetResponse>>(result.Error ?? "No active budgets found");
 
             var responses = result.Value.Select(MapToResponse);
             return OperationResult.Success(responses);
@@ -129,8 +129,8 @@ public class BudgetService : IBudgetService
 
             // Obtener presupuesto existente
             var getBudgetResult = await _budgetRepository.GetByIdAsync(budgetId);
-            if (!getBudgetResult.IsSuccess)
-                return OperationResult.Failure<BudgetResponse>(getBudgetResult.Error);
+            if (!getBudgetResult.IsSuccess || getBudgetResult.Value == null)
+                return OperationResult.Failure<BudgetResponse>(getBudgetResult.Error ?? "Budget not found");
 
             var budget = getBudgetResult.Value;
             if (budget.UserId != userId)
@@ -183,8 +183,8 @@ public class BudgetService : IBudgetService
             _logger.LogInformation("Deactivating budget {BudgetId} for user {UserId}", budgetId, userId);
 
             var getBudgetResult = await _budgetRepository.GetByIdAsync(budgetId);
-            if (!getBudgetResult.IsSuccess)
-                return OperationResult.Failure(getBudgetResult.Error);
+            if (!getBudgetResult.IsSuccess || getBudgetResult.Value == null)
+                return OperationResult.Failure(getBudgetResult.Error ?? "Budget not found");
 
             var budget = getBudgetResult.Value;
             if (budget.UserId != userId)
@@ -275,9 +275,9 @@ public class BudgetService : IBudgetService
                 request.LinkedAccountId
             );
 
-            if (!createResult.IsSuccess)
+            if (!createResult.IsSuccess || createResult.Value == null)
                 return OperationResult.Failure<SavingsGoalResponse>(createResult.Error);
-
+ 
             var goal = createResult.Value;
             var addResult = await _savingsGoalRepository.AddAsync(goal);
             
@@ -303,9 +303,9 @@ public class BudgetService : IBudgetService
             _logger.LogInformation("Getting savings goal {GoalId} for user {UserId}", goalId, userId);
             
             var result = await _savingsGoalRepository.GetByIdAsync(goalId);
-            if (!result.IsSuccess)
-                return OperationResult.Failure<SavingsGoalResponse>(result.Error);
-
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<SavingsGoalResponse>(result.Error ?? "Savings goal not found");
+ 
             var goal = result.Value;
             if (goal.UserId != userId)
                 return OperationResult.Failure<SavingsGoalResponse>("Savings goal not found");
@@ -337,9 +337,9 @@ public class BudgetService : IBudgetService
                 result = await _savingsGoalRepository.GetAllByUserAsync(userId);
             }
 
-            if (!result.IsSuccess)
-                return OperationResult.Failure<IEnumerable<SavingsGoalResponse>>(result.Error);
-
+            if (!result.IsSuccess || result.Value == null)
+                return OperationResult.Failure<IEnumerable<SavingsGoalResponse>>(result.Error ?? "Savings goals not found");
+ 
             var responses = result.Value.Select(MapToSavingsGoalResponse);
             return OperationResult.Success(responses);
         }
