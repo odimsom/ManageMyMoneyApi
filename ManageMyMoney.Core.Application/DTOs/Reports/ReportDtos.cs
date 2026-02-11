@@ -123,3 +123,13 @@ public record ExportReportRequest
     public List<Guid>? CategoryIds { get; init; }
     public List<Guid>? AccountIds { get; init; }
 }
+
+public record BudgetPerformanceResponse
+{
+    public required string BudgetName { get; init; }
+    public decimal AllocatedAmount { get; init; }
+    public decimal SpentAmount { get; init; }
+    public decimal RemainingAmount { get; init; }
+    public decimal PerformancePercentage { get; init; }
+    public required string Status { get; init; }
+}

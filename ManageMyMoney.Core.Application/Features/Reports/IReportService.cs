@@ -9,6 +9,7 @@ public interface IReportService
     Task<OperationResult<FinancialSummaryResponse>> GetFinancialSummaryAsync(Guid userId, DateTime fromDate, DateTime toDate);
     Task<OperationResult<MonthlyReportResponse>> GetMonthlyReportAsync(Guid userId, int year, int month);
     Task<OperationResult<YearlyReportResponse>> GetYearlyReportAsync(Guid userId, int year);
+    Task<OperationResult<IEnumerable<BudgetPerformanceResponse>>> GetBudgetPerformanceAsync(Guid userId);
 
     // Comparisons
     Task<OperationResult<ComparisonReportResponse>> GetComparisonReportAsync(Guid userId, ComparisonReportRequest request);

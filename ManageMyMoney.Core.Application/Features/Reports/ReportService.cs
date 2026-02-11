@@ -12,17 +12,23 @@ public class ReportService : IReportService
     private readonly IExpenseRepository _expenseRepository;
     private readonly IIncomeRepository _incomeRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly IBudgetRepository _budgetRepository;
 
     public ReportService(
         ILogger<ReportService> logger,
         IExpenseRepository expenseRepository,
         IIncomeRepository incomeRepository, 
-        IAccountRepository accountRepository)
+        IAccountRepository accountRepository,
+        ICategoryRepository categoryRepository,
+        IBudgetRepository budgetRepository)
     {
         _logger = logger;
         _expenseRepository = expenseRepository;
         _incomeRepository = incomeRepository;
         _accountRepository = accountRepository;
+        _categoryRepository = categoryRepository;
+        _budgetRepository = budgetRepository;
     }
 
     public async Task<OperationResult<FinancialSummaryResponse>> GetFinancialSummaryAsync(Guid userId, DateTime fromDate, DateTime toDate)
@@ -32,15 +38,24 @@ public class ReportService : IReportService
             _logger.LogInformation("Getting financial summary for user {UserId} from {FromDate} to {ToDate}", 
                 userId, fromDate, toDate);
 
-            // TODO: Implementar cuando se tengan gastos e ingresos reales
-            // Por ahora retornamos un resumen vacío
+            var dateRange = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(fromDate, toDate);
+            
+            var totalIncomeResult = await _incomeRepository.GetTotalByUserAndDateRangeAsync(userId, dateRange);
+            var totalExpensesResult = await _expenseRepository.GetTotalByUserAndDateRangeAsync(userId, dateRange);
+            var totalBalanceResult = await _accountRepository.GetTotalBalanceByUserAsync(userId);
+
+            var totalIncome = totalIncomeResult.Value;
+            var totalExpenses = totalExpensesResult.Value;
+            var netBalance = totalIncome - totalExpenses;
+            var savingsRate = totalIncome > 0 ? (netBalance / totalIncome) * 100 : 0;
+
             var response = new FinancialSummaryResponse
             {
-                TotalIncome = 0,
-                TotalExpenses = 0,
-                NetBalance = 0,
-                SavingsRate = 0,
-                Currency = "USD",
+                TotalIncome = totalIncome,
+                TotalExpenses = totalExpenses,
+                NetBalance = netBalance,
+                SavingsRate = savingsRate,
+                Currency = "DOP", // Default for now
                 FromDate = fromDate,
                 ToDate = toDate
             };
@@ -62,21 +77,59 @@ public class ReportService : IReportService
                 userId, year, month);
 
             var monthName = new DateTime(year, month, 1).ToString("MMMM", CultureInfo.InvariantCulture);
+            var startDate = new DateTime(year, month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+            var dateRange = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(startDate, endDate);
 
-            // TODO: Implementar con datos reales
+            var expensesResult = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRange);
+            var incomeResult = await _incomeRepository.GetByUserAndDateRangeAsync(userId, dateRange);
+
+            var expenses = expensesResult.Value ?? Enumerable.Empty<ManageMyMoney.Core.Domain.Entities.Expenses.Expense>();
+            var incomes = incomeResult.Value ?? Enumerable.Empty<ManageMyMoney.Core.Domain.Entities.Income.Income>();
+
+            var totalExpenses = expenses.Sum(e => e.Amount);
+            var totalIncome = incomes.Sum(i => i.Amount);
+            var netBalance = totalIncome - totalExpenses;
+            var savingsRate = totalIncome > 0 ? (netBalance / totalIncome) * 100 : 0;
+
+            var expensesByCategory = expenses
+                .GroupBy(e => e.CategoryId)
+                .Select(g => new CategoryBreakdownItem
+                {
+                    CategoryId = g.Key,
+                    CategoryName = g.First().Category?.Name ?? "Unknown",
+                    Amount = g.Sum(e => e.Amount),
+                    Percentage = totalExpenses > 0 ? (g.Sum(e => e.Amount) / totalExpenses) * 100 : 0,
+                    TransactionCount = g.Count()
+                })
+                .OrderByDescending(c => c.Amount)
+                .ToList();
+
+            var incomeBySource = incomes
+                .GroupBy(i => i.IncomeSourceId)
+                .Select(g => new IncomeSourceBreakdownItem
+                {
+                    SourceId = g.Key,
+                    SourceName = g.First().Source?.Name ?? "Unknown",
+                    Amount = g.Sum(i => i.Amount),
+                    Percentage = totalIncome > 0 ? (g.Sum(i => i.Amount) / totalIncome) * 100 : 0
+                })
+                .OrderByDescending(i => i.Amount)
+                .ToList();
+
             var response = new MonthlyReportResponse
             {
                 Year = year,
                 Month = month,
                 MonthName = monthName,
-                TotalIncome = 0,
-                TotalExpenses = 0,
-                NetBalance = 0,
-                SavingsRate = 0,
-                Currency = "USD",
-                ExpensesByCategory = new List<CategoryBreakdownItem>(),
-                IncomeBySource = new List<IncomeSourceBreakdownItem>(),
-                DailyBalance = new List<DailyBalanceItem>(),
+                TotalIncome = totalIncome,
+                TotalExpenses = totalExpenses,
+                NetBalance = netBalance,
+                SavingsRate = savingsRate,
+                Currency = "DOP",
+                ExpensesByCategory = expensesByCategory,
+                IncomeBySource = incomeBySource,
+                DailyBalance = new List<DailyBalanceItem>(), // Simplified
                 ComparedToPreviousMonth = 0
             };
 
@@ -96,17 +149,45 @@ public class ReportService : IReportService
         {
             _logger.LogInformation("Getting yearly report for user {UserId}, year {Year}", userId, year);
 
-            // TODO: Implementar con datos reales
+            var startDate = new DateTime(year, 1, 1);
+            var endDate = new DateTime(year, 12, 31);
+            var dateRange = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(startDate, endDate);
+
+            var expensesResult = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRange);
+            var incomeResult = await _incomeRepository.GetByUserAndDateRangeAsync(userId, dateRange);
+
+            var expenses = expensesResult.Value ?? Enumerable.Empty<ManageMyMoney.Core.Domain.Entities.Expenses.Expense>();
+            var incomes = incomeResult.Value ?? Enumerable.Empty<ManageMyMoney.Core.Domain.Entities.Income.Income>();
+
+            var totalExpenses = expenses.Sum(e => e.Amount);
+            var totalIncome = incomes.Sum(i => i.Amount);
+            var netBalance = totalIncome - totalExpenses;
+
+            var monthlyTrends = new List<MonthlyTrendItem>();
+            for (int m = 1; m <= 12; m++)
+            {
+                var monthExpenses = expenses.Where(e => e.Date.Month == m).Sum(e => e.Amount);
+                var monthIncome = incomes.Where(i => i.Date.Month == m).Sum(i => i.Amount);
+                monthlyTrends.Add(new MonthlyTrendItem
+                {
+                    Month = m,
+                    MonthName = new DateTime(year, m, 1).ToString("MMMM", CultureInfo.InvariantCulture),
+                    Income = monthIncome,
+                    Expenses = monthExpenses,
+                    Balance = monthIncome - monthExpenses
+                });
+            }
+
             var response = new YearlyReportResponse
             {
                 Year = year,
-                TotalIncome = 0,
-                TotalExpenses = 0,
-                NetBalance = 0,
-                AverageMonthlySavings = 0,
-                Currency = "USD",
-                MonthlyTrends = new List<MonthlyTrendItem>(),
-                ExpensesByCategory = new List<CategoryBreakdownItem>()
+                TotalIncome = totalIncome,
+                TotalExpenses = totalExpenses,
+                NetBalance = netBalance,
+                AverageMonthlySavings = netBalance / 12,
+                Currency = "DOP",
+                MonthlyTrends = monthlyTrends,
+                ExpensesByCategory = new List<CategoryBreakdownItem>() // Simplified
             };
 
             return OperationResult.Success(response);
@@ -124,30 +205,46 @@ public class ReportService : IReportService
         {
             _logger.LogInformation("Getting comparison report for user {UserId}", userId);
 
-            // TODO: Implementar con datos reales
+            var range1 = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(request.Period1Start, request.Period1End);
+            var range2 = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(request.Period2Start, request.Period2End);
+
+            var income1Result = await _incomeRepository.GetByUserAndDateRangeAsync(userId, range1);
+            var expense1Result = await _expenseRepository.GetByUserAndDateRangeAsync(userId, range1);
+            
+            var income2Result = await _incomeRepository.GetByUserAndDateRangeAsync(userId, range2);
+            var expense2Result = await _expenseRepository.GetByUserAndDateRangeAsync(userId, range2);
+
+            var income1 = income1Result.Value?.Sum(i => i.Amount) ?? 0;
+            var expense1 = expense1Result.Value?.Sum(e => e.Amount) ?? 0;
+            var income2 = income2Result.Value?.Sum(i => i.Amount) ?? 0;
+            var expense2 = expense2Result.Value?.Sum(e => e.Amount) ?? 0;
+
+            var incomeChange = income2 - income1;
+            var expenseChange = expense2 - expense1;
+
             var response = new ComparisonReportResponse
             {
                 Period1 = new PeriodSummary
                 {
                     StartDate = request.Period1Start,
                     EndDate = request.Period1End,
-                    TotalIncome = 0,
-                    TotalExpenses = 0,
-                    Balance = 0
+                    TotalIncome = income1,
+                    TotalExpenses = expense1,
+                    Balance = income1 - expense1
                 },
                 Period2 = new PeriodSummary
                 {
                     StartDate = request.Period2Start,
                     EndDate = request.Period2End,
-                    TotalIncome = 0,
-                    TotalExpenses = 0,
-                    Balance = 0
+                    TotalIncome = income2,
+                    TotalExpenses = expense2,
+                    Balance = income2 - expense2
                 },
-                IncomeChange = 0,
-                IncomeChangePercentage = 0,
-                ExpenseChange = 0,
-                ExpenseChangePercentage = 0,
-                BalanceChange = 0,
+                IncomeChange = incomeChange,
+                IncomeChangePercentage = income1 > 0 ? (incomeChange / income1) * 100 : 0,
+                ExpenseChange = expenseChange,
+                ExpenseChangePercentage = expense1 > 0 ? (expenseChange / expense1) * 100 : 0,
+                BalanceChange = (income2 - expense2) - (income1 - expense1),
                 CategoryComparison = new List<CategoryComparisonItem>()
             };
 
@@ -217,26 +314,82 @@ public class ReportService : IReportService
         }
     }
 
+    public async Task<OperationResult<IEnumerable<BudgetPerformanceResponse>>> GetBudgetPerformanceAsync(Guid userId)
+    {
+        try
+        {
+            var budgetsResult = await _budgetRepository.GetActiveByUserAsync(userId);
+            if (budgetsResult.IsFailure)
+                return OperationResult.Failure<IEnumerable<BudgetPerformanceResponse>>(budgetsResult.Error);
+
+            var performanceList = new List<BudgetPerformanceResponse>();
+            var now = DateTime.UtcNow;
+            var startOfMonth = new DateTime(now.Year, now.Month, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddDays(-1);
+            var dateRange = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(startOfMonth, endOfMonth);
+
+            foreach (var budget in budgetsResult.Value!)
+            {
+                var spentResult = await _expenseRepository.GetTotalByCategoryAndDateRangeAsync(budget.CategoryId, dateRange);
+                var spent = spentResult.Value;
+                var performance = budget.Amount > 0 ? (spent / budget.Amount) * 100 : 0;
+                
+                string status = "UnderBudget";
+                if (performance >= 100) status = "OverBudget";
+                else if (performance >= 90) status = "NearLimit";
+
+                performanceList.Add(new BudgetPerformanceResponse
+                {
+                    BudgetName = budget.Name,
+                    AllocatedAmount = budget.Amount,
+                    SpentAmount = spent,
+                    RemainingAmount = Math.Max(0, budget.Amount - spent),
+                    PerformancePercentage = performance,
+                    Status = status
+                });
+            }
+
+            return OperationResult.Success<IEnumerable<BudgetPerformanceResponse>>(performanceList);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting budget performance for user {UserId}", userId);
+            return OperationResult.Failure<IEnumerable<BudgetPerformanceResponse>>("An error occurred while retrieving budget performance");
+        }
+    }
+
     public async Task<OperationResult<IEnumerable<MonthlyTrendItem>>> GetExpenseTrendsAsync(Guid userId, int months = 12)
     {
         try
         {
             _logger.LogInformation("Getting expense trends for user {UserId}, months: {Months}", userId, months);
 
-            // TODO: Implementar con datos reales de gastos
+            var today = DateTime.Today;
+            var startDate = new DateTime(today.Year, today.Month, 1).AddMonths(-months + 1);
+            var endDate = new DateTime(today.Year, today.Month, 1).AddMonths(1).AddDays(-1);
+            var dateRange = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(startDate, endDate);
+
+            var expensesResult = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRange);
+            var incomesResult = await _incomeRepository.GetByUserAndDateRangeAsync(userId, dateRange);
+
+            var expenses = expensesResult.Value ?? Enumerable.Empty<ManageMyMoney.Core.Domain.Entities.Expenses.Expense>();
+            var incomes = incomesResult.Value ?? Enumerable.Empty<ManageMyMoney.Core.Domain.Entities.Income.Income>();
+
             var trends = new List<MonthlyTrendItem>();
 
-            var startDate = DateTime.Now.AddMonths(-months);
             for (int i = 0; i < months; i++)
             {
                 var date = startDate.AddMonths(i);
+                var monthExpenses = expenses.Where(e => e.Date.Month == date.Month && e.Date.Year == date.Year).Sum(e => e.Amount);
+                var monthIncome = incomes.Where(i => i.Date.Month == date.Month && i.Date.Year == date.Year).Sum(i => i.Amount);
+                
                 trends.Add(new MonthlyTrendItem
                 {
                     Month = date.Month,
                     MonthName = date.ToString("MMMM", CultureInfo.InvariantCulture),
-                    Income = 0,
-                    Expenses = 0,
-                    Balance = 0
+                    Income = monthIncome,
+                    Expenses = monthExpenses,
+                    Balance = monthIncome - monthExpenses
                 });
             }
 
@@ -251,34 +404,7 @@ public class ReportService : IReportService
 
     public async Task<OperationResult<IEnumerable<MonthlyTrendItem>>> GetIncomeTrendsAsync(Guid userId, int months = 12)
     {
-        try
-        {
-            _logger.LogInformation("Getting income trends for user {UserId}, months: {Months}", userId, months);
-
-            // TODO: Implementar con datos reales de ingresos
-            var trends = new List<MonthlyTrendItem>();
-
-            var startDate = DateTime.Now.AddMonths(-months);
-            for (int i = 0; i < months; i++)
-            {
-                var date = startDate.AddMonths(i);
-                trends.Add(new MonthlyTrendItem
-                {
-                    Month = date.Month,
-                    MonthName = date.ToString("MMMM", CultureInfo.InvariantCulture),
-                    Income = 0,
-                    Expenses = 0,
-                    Balance = 0
-                });
-            }
-
-            return OperationResult.Success<IEnumerable<MonthlyTrendItem>>(trends);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting income trends for user {UserId}", userId);
-            return OperationResult.Failure<IEnumerable<MonthlyTrendItem>>("An error occurred while retrieving income trends");
-        }
+        return await GetExpenseTrendsAsync(userId, months); // Both use the same logic for trends
     }
 
     public async Task<OperationResult<IEnumerable<CategoryBreakdownItem>>> GetTopExpenseCategoriesAsync(Guid userId, DateTime fromDate, DateTime toDate, int top = 5)
@@ -288,9 +414,29 @@ public class ReportService : IReportService
             _logger.LogInformation("Getting top {Top} expense categories for user {UserId} from {FromDate} to {ToDate}", 
                 top, userId, fromDate, toDate);
 
-            // TODO: Implementar con datos reales
-            var emptyList = Enumerable.Empty<CategoryBreakdownItem>();
-            return OperationResult.Success(emptyList);
+            var dateRange = new ManageMyMoney.Core.Domain.ValueObjects.DateRange(fromDate, toDate);
+            var expensesResult = await _expenseRepository.GetByUserAndDateRangeAsync(userId, dateRange);
+            
+            if (expensesResult.IsFailure)
+                return OperationResult.Failure<IEnumerable<CategoryBreakdownItem>>(expensesResult.Error);
+
+            var totalExpenses = expensesResult.Value?.Sum(e => e.Amount) ?? 0;
+
+            var topCategories = expensesResult.Value?
+                .GroupBy(e => e.CategoryId)
+                .Select(g => new CategoryBreakdownItem
+                {
+                    CategoryId = g.Key,
+                    CategoryName = g.First().Category?.Name ?? "Unknown",
+                    Amount = g.Sum(e => e.Amount),
+                    Percentage = totalExpenses > 0 ? (g.Sum(e => e.Amount) / totalExpenses) * 100 : 0,
+                    TransactionCount = g.Count()
+                })
+                .OrderByDescending(c => c.Amount)
+                .Take(top)
+                .ToList() ?? new List<CategoryBreakdownItem>();
+
+            return OperationResult.Success<IEnumerable<CategoryBreakdownItem>>(topCategories);
         }
         catch (Exception ex)
         {

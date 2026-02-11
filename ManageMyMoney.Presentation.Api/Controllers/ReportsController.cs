@@ -40,6 +40,14 @@ public class ReportsController : BaseApiController
         return HandleResult(result);
     }
 
+    [HttpGet("budget-performance")]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<BudgetPerformanceResponse>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBudgetPerformance()
+    {
+        var result = await _reportService.GetBudgetPerformanceAsync(CurrentUserId);
+        return HandleResult(result);
+    }
+
     [HttpPost("comparison")]
     [ProducesResponseType(typeof(ApiResponse<ComparisonReportResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetComparisonReport([FromBody] ComparisonReportRequest request)

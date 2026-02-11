@@ -44,6 +44,8 @@ public static class ServicesRegistration
         services.AddScoped<IBudgetRepository, BudgetRepository>();
         services.AddScoped<ISavingsGoalRepository, SavingsGoalRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IReminderRepository, ReminderRepository>();
+        services.AddScoped<IAlertRepository, AlertRepository>();
 
         // Services
         services.AddScoped<DatabaseInitializationService>();

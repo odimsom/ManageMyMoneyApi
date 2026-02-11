@@ -10,13 +10,19 @@ namespace ManageMyMoney.Core.Application.Features.Notifications;
 public class NotificationService : INotificationService
 {
     private readonly INotificationRepository _notificationRepository;
+    private readonly IReminderRepository _reminderRepository;
+    private readonly IAlertRepository _alertRepository;
     private readonly ILogger<NotificationService> _logger;
 
     public NotificationService(
         INotificationRepository notificationRepository,
+        IReminderRepository reminderRepository,
+        IAlertRepository alertRepository,
         ILogger<NotificationService> logger)
     {
         _notificationRepository = notificationRepository;
+        _reminderRepository = reminderRepository;
+        _alertRepository = alertRepository;
         _logger = logger;
     }
 
@@ -79,32 +85,82 @@ public class NotificationService : INotificationService
 
     public async Task<OperationResult<ReminderResponse>> CreateReminderAsync(Guid userId, CreateReminderRequest request)
     {
-        return OperationResult.Failure<ReminderResponse>("Reminders implementation pending");
+        var reminderResult = Reminder.Create(
+            request.Title,
+            request.DueDate,
+            userId,
+            request.Description);
+
+        if (reminderResult.IsFailure)
+            return OperationResult.Failure<ReminderResponse>(reminderResult.Error);
+
+        var saveResult = await _reminderRepository.AddAsync(reminderResult.Value!);
+        if (saveResult.IsFailure)
+            return OperationResult.Failure<ReminderResponse>(saveResult.Error);
+
+        return OperationResult.Success(MapToReminderResponse(reminderResult.Value!));
     }
 
     public async Task<OperationResult<IEnumerable<ReminderResponse>>> GetRemindersAsync(Guid userId, bool pendingOnly = true)
     {
-        return OperationResult.Success<IEnumerable<ReminderResponse>>(Enumerable.Empty<ReminderResponse>());
+        var result = await _reminderRepository.GetByUserAsync(userId, pendingOnly);
+        if (result.IsFailure)
+            return OperationResult.Failure<IEnumerable<ReminderResponse>>(result.Error);
+
+        return OperationResult.Success(result.Value!.Select(MapToReminderResponse));
     }
 
     public async Task<OperationResult> CompleteReminderAsync(Guid userId, Guid reminderId)
     {
-        return OperationResult.Failure("Reminders implementation pending");
+        var result = await _reminderRepository.GetByIdAsync(reminderId);
+        if (result.IsFailure)
+            return OperationResult.Failure(result.Error);
+
+        if (result.Value!.UserId != userId)
+            return OperationResult.Failure("Reminder not found");
+
+        var completeResult = result.Value.Complete();
+        if (completeResult.IsFailure)
+            return completeResult;
+
+        return await _reminderRepository.UpdateAsync(result.Value);
     }
 
     public async Task<OperationResult> DeleteReminderAsync(Guid userId, Guid reminderId)
     {
-        return OperationResult.Failure("Reminders implementation pending");
+        var result = await _reminderRepository.GetByIdAsync(reminderId);
+        if (result.IsFailure)
+            return OperationResult.Failure(result.Error);
+
+        if (result.Value!.UserId != userId)
+            return OperationResult.Failure("Reminder not found");
+
+        return await _reminderRepository.DeleteAsync(reminderId);
     }
 
     public async Task<OperationResult<IEnumerable<AlertResponse>>> GetAlertsAsync(Guid userId, bool unacknowledgedOnly = true)
     {
-        return OperationResult.Success<IEnumerable<AlertResponse>>(Enumerable.Empty<AlertResponse>());
+        var result = await _alertRepository.GetByUserAsync(userId, unacknowledgedOnly);
+        if (result.IsFailure)
+            return OperationResult.Failure<IEnumerable<AlertResponse>>(result.Error);
+
+        return OperationResult.Success(result.Value!.Select(MapToAlertResponse));
     }
 
     public async Task<OperationResult> AcknowledgeAlertAsync(Guid userId, Guid alertId)
     {
-        return OperationResult.Failure("Alerts implementation pending");
+        var result = await _alertRepository.GetByIdAsync(alertId);
+        if (result.IsFailure)
+            return OperationResult.Failure(result.Error);
+
+        if (result.Value!.UserId != userId)
+            return OperationResult.Failure("Alert not found");
+
+        var acknowledgeResult = result.Value.Acknowledge();
+        if (acknowledgeResult.IsFailure)
+            return acknowledgeResult;
+
+        return await _alertRepository.UpdateAsync(result.Value);
     }
 
     public async Task<OperationResult> SendBudgetAlertAsync(Guid userId, Guid budgetId, string budgetName, decimal percentageUsed)
@@ -165,6 +221,36 @@ public class NotificationService : INotificationService
             IsRead = notification.IsRead,
             CreatedAt = notification.CreatedAt,
             ReadAt = notification.ReadAt
+        };
+    }
+
+    private static ReminderResponse MapToReminderResponse(Reminder reminder)
+    {
+        return new ReminderResponse
+        {
+            Id = reminder.Id,
+            Title = reminder.Title,
+            Description = reminder.Description,
+            DueDate = reminder.DueDate,
+            IsCompleted = reminder.IsCompleted,
+            IsSent = reminder.IsSent,
+            CreatedAt = reminder.CreatedAt,
+            IsRecurring = reminder.IsRecurring,
+            Recurrence = reminder.Recurrence?.ToString()
+        };
+    }
+
+    private static AlertResponse MapToAlertResponse(Alert alert)
+    {
+        return new AlertResponse
+        {
+            Id = alert.Id,
+            Title = alert.Title,
+            Message = alert.Message,
+            Type = alert.Type.ToString(),
+            IsAcknowledged = alert.IsAcknowledged,
+            CreatedAt = alert.CreatedAt,
+            AcknowledgedAt = alert.AcknowledgedAt
         };
     }
 }
